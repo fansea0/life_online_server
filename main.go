@@ -16,6 +16,7 @@ import (
 func init() {
 	config.InitEnvConf()
 	service_game.Init()
+	// db.InitDB()
 }
 func main() {
 

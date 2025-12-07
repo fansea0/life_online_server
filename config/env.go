@@ -14,6 +14,8 @@ type envConfig struct {
 	SystemMsg  string
 	RespFormat string
 	OtherReqs  string
+
+	MainDBUrl string
 }
 
 var (
@@ -49,4 +51,8 @@ func GetRespFormat() string {
 
 func GetOtherReqs() string {
 	return envConf.OtherReqs
+}
+
+func GetMainDBUrl() string {
+	return envConf.MainDBUrl
 }

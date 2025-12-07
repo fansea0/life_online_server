@@ -113,7 +113,32 @@
             processQueue: Promise.resolve() // Sequential task queue
         };
 
-        // ... els ...
+        const els = {
+            setup: document.getElementById('setup-screen'),
+            game: document.getElementById('game-screen'),
+            nameInput: document.getElementById('input-name'),
+            storyContainer: document.getElementById('story-container'),
+            choicesContainer: document.getElementById('choices-container'),
+            loading: document.getElementById('loading-indicator'),
+            sfxType: document.getElementById('sfx-type'),
+            sfxClick: document.getElementById('sfx-click')
+        };
+
+        // Init SFX Volume
+        if(els.sfxType) els.sfxType.volume = 0.6;
+        if(els.sfxClick) els.sfxClick.volume = 0.4;
+
+        function unlockAudioOnce() {
+            if (STATE.audioUnlocked) return;
+            STATE.audioUnlocked = true;
+            [els.sfxType, els.sfxClick].forEach(a => {
+                if (!a) return;
+                a.play().then(() => {
+                    a.pause();
+                    a.currentTime = 0;
+                }).catch(()=>{});
+            });
+        }
 
         // Helper: Add task to queue
         function queueTask(task) {
@@ -122,8 +147,19 @@
             });
         }
 
-        // ... initWebSocket ...
-            STATE.ws.onmessage = (event) => { // Remove async, handle in queue
+        // WebSocket Initialization
+        function initWebSocket() {
+            // Determine protocol (ws or wss)
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/game/ws`;
+            
+            STATE.ws = new WebSocket(wsUrl);
+            
+            STATE.ws.onopen = () => {
+                console.log("WS Connected");
+            };
+            
+            STATE.ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 
                 queueTask(async () => {
@@ -168,6 +204,16 @@
                     }
                 });
             };
+            
+            STATE.ws.onclose = () => {
+                console.log("WS Closed, retrying in 3s...");
+                setTimeout(initWebSocket, 3000);
+            };
+            
+            STATE.ws.onerror = (err) => {
+                console.error("WS Error:", err);
+            };
+        }
 
 
         // Initialize WS
