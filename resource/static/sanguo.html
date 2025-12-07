@@ -108,117 +108,67 @@
             isTyping: false,
             audioUnlocked: false,
             ws: null,
-            buffer: "" // Stream Buffer
+            buffer: "", // Stream Buffer
+            choicesBuffer: [],
+            processQueue: Promise.resolve() // Sequential task queue
         };
 
-        const els = {
-            setup: document.getElementById('setup-screen'),
-            game: document.getElementById('game-screen'),
-            nameInput: document.getElementById('input-name'),
-            storyContainer: document.getElementById('story-container'),
-            choicesContainer: document.getElementById('choices-container'),
-            loading: document.getElementById('loading-indicator'),
-            sfxType: document.getElementById('sfx-type'),
-            sfxClick: document.getElementById('sfx-click')
-        };
+        // ... els ...
 
-        // Init SFX Volume
-        els.sfxType.volume = 0.6;   // 打字机声
-        els.sfxClick.volume = 0.4;  // 按钮点击声
-
-        function unlockAudioOnce() {
-            if (STATE.audioUnlocked) return;
-            STATE.audioUnlocked = true;
-            [els.sfxType, els.sfxClick].forEach(a => {
-                if (!a) return;
-                a.play().then(() => {
-                    a.pause();
-                    a.currentTime = 0;
-                }).catch(()=>{});
+        // Helper: Add task to queue
+        function queueTask(task) {
+            STATE.processQueue = STATE.processQueue.then(() => task()).catch(err => {
+                console.error("Task error:", err);
             });
         }
 
-        // WebSocket Initialization
-        function initWebSocket() {
-            // Determine protocol (ws or wss)
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/api/game/ws`;
-            
-            STATE.ws = new WebSocket(wsUrl);
-            
-            STATE.ws.onopen = () => {
-                console.log("WS Connected");
-            };
-            
-            STATE.ws.onmessage = async (event) => {
+        // ... initWebSocket ...
+            STATE.ws.onmessage = (event) => { // Remove async, handle in queue
                 const data = JSON.parse(event.data);
                 
-                if (data.type === 'session') {
-                    STATE.sessionId = data.session_id;
-                } else if (data.type === 'content') {
-                    STATE.buffer += data.content;
-                    
-                    // Check for separator '---'
-                    if (STATE.buffer.includes('---')) {
-                        const parts = STATE.buffer.split('---');
+                queueTask(async () => {
+                    if (data.type === 'session') {
+                        STATE.sessionId = data.session_id;
+                    } else if (data.type === 'content') {
+                        STATE.buffer += data.content;
                         
-                        let renderParts = [];
-                        // If ends with ---, all parts are complete
-                        if (STATE.buffer.trim().endsWith('---')) {
-                            renderParts = parts.filter(p => p.trim().length > 0);
-                            STATE.buffer = "";
-                        } else {
-                            // Keep the last part in buffer (might be incomplete)
-                            STATE.buffer = parts.pop(); 
-                            renderParts = parts.filter(p => p.trim().length > 0);
+                        if (STATE.buffer.includes('---')) {
+                            const parts = STATE.buffer.split('---');
+                            let renderParts = [];
+                            
+                            if (STATE.buffer.trim().endsWith('---')) {
+                                renderParts = parts.filter(p => p.trim().length > 0);
+                                STATE.buffer = "";
+                            } else {
+                                STATE.buffer = parts.pop(); 
+                                renderParts = parts.filter(p => p.trim().length > 0);
+                            }
+                            
+                            for (const part of renderParts) {
+                                await processChunk(part); 
+                            }
                         }
+                    } else if (data.type === 'end') {
+                        if (STATE.buffer.trim().length > 0) {
+                            const parts = STATE.buffer.split('---').filter(p => p.trim().length > 0);
+                            for (const part of parts) {
+                                await processChunk(part);
+                            }
+                        }
+                        STATE.buffer = "";
+                        showLoading(false);
                         
-                        for (const part of renderParts) {
-                            await processChunk(part); 
+                        if (STATE.choicesBuffer && STATE.choicesBuffer.length > 0) {
+                            renderChoiceButtons(STATE.choicesBuffer);
+                            STATE.choicesBuffer = []; 
                         }
+                    } else if (data.type === 'error') {
+                        appendSystemMsg("错误: " + data.message);
+                        showLoading(false);
                     }
-                } else if (data.type === 'end') {
-                    // Flush buffer
-                    if (STATE.buffer.trim().length > 0) {
-                        // Handle remaining parts (treating separators)
-                        const parts = STATE.buffer.split('---').filter(p => p.trim().length > 0);
-                        for (const part of parts) {
-                            await processChunk(part);
-                        }
-                    }
-                    STATE.buffer = "";
-                    showLoading(false);
-                    
-                    // Try to detect choices in the *very last* rendered chunk logic?
-                    // Actually processChunk handles rendering and choice detection buffer
-                    // We might need to check if choices were buffered but not rendered
-                    if (STATE.choicesBuffer && STATE.choicesBuffer.length > 0) {
-                        renderChoiceButtons(STATE.choicesBuffer);
-                        STATE.choicesBuffer = []; // Clear
-                    } else {
-                        // Fallback: detect in last text
-                        // This part is tricky because 'last text' is inside DOM now.
-                        // We can rely on processChunk to have populated choicesBuffer if standard format
-                        // Or fallback logic if we need to parse the DOM text.
-                        // Let's assume processChunk covers standard choice format.
-                    }
-                    
-                } else if (data.type === 'error') {
-                    appendSystemMsg("错误: " + data.message);
-                    showLoading(false);
-                }
+                });
             };
-            
-            STATE.ws.onclose = () => {
-                console.log("WS Closed, retrying in 3s...");
-                setTimeout(initWebSocket, 3000);
-            };
-            
-            STATE.ws.onerror = (err) => {
-                console.error("WS Error:", err);
-                // appendSystemMsg("网络连接错误");
-            };
-        }
+
 
         // Initialize WS
         initWebSocket();
