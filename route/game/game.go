@@ -4,6 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"life-online/service/game"
+	"life-online/store/sanguo"
 	"net/http"
 
 	"github.com/cloudwego/eino/schema"
@@ -18,6 +19,7 @@ func SetupRouter(r *gin.Engine) {
 		g.POST("/choice", GameChoice)
 		g.POST("/start", GameStart)
 		g.GET("/ws", GameWS)
+		g.GET("/identify_list", identifyList)
 	}
 }
 
@@ -149,4 +151,20 @@ func GameWS(c *gin.Context) {
 		// 更新完整上下文到内存
 		game.UpdateContextWithResponse(sessionID, currentContent)
 	}
+}
+
+func identifyList(c *gin.Context) {
+	var req struct {
+		Scope int `json:"scope" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	identities, err := sanguo.GetGameIdentitiesByScope(req.Scope)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"identities": identities})
 }
