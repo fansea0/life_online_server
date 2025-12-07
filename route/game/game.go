@@ -1,10 +1,13 @@
 package game
 
 import (
+	"io"
 	"life-online/service/game"
 	"net/http"
 
+	"github.com/cloudwego/eino/schema"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 func SetupRouter(r *gin.Engine) {
@@ -12,8 +15,8 @@ func SetupRouter(r *gin.Engine) {
 	{
 		g.POST("/action", GameAction)
 		g.POST("/choice", GameChoice)
-		//g.POST("/choice_stream", GameChoiceStream)
 		g.POST("/start", GameStart)
+		g.GET("/ws", GameWS)
 	}
 }
 
@@ -67,4 +70,81 @@ func GameStart(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"session_id": uuid, "content": content})
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func GameWS(c *gin.Context) {
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+
+	for {
+		var req struct {
+			Type      string `json:"type"` // "start" or "choice"
+			Name      string `json:"name"`
+			Identify  string `json:"identify"`
+			SessionID string `json:"session_id"`
+			Choice    string `json:"choice"`
+		}
+
+		err := ws.ReadJSON(&req)
+		if err != nil {
+			break
+		}
+
+		var streamReader *schema.StreamReader[*schema.Message]
+		var sessionID string
+		var currentContent string
+
+		if req.Type == "start" {
+			sessionID, streamReader, err = game.StartGameStream(req.Name, req.Identify)
+			if err == nil {
+				ws.WriteJSON(gin.H{"type": "session", "session_id": sessionID})
+			}
+		} else if req.Type == "choice" {
+			sessionID = req.SessionID
+			streamReader, err = game.HandleChoiceStream(req.SessionID, req.Choice)
+		}
+
+		if err != nil {
+			ws.WriteJSON(gin.H{"type": "error", "message": err.Error()})
+			continue
+		}
+
+		if streamReader != nil {
+			// 读取流并推送
+			for {
+				chunk, err := streamReader.Recv()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					break
+				}
+
+				content := chunk.Content
+				currentContent += content
+
+				// 实时推送片段
+				ws.WriteJSON(gin.H{
+					"type":    "content",
+					"content": content,
+				})
+			}
+			streamReader.Close()
+		}
+
+		// 发送结束标记，告知前端本轮输出完毕
+		ws.WriteJSON(gin.H{"type": "end"})
+
+		// 更新完整上下文到内存
+		game.UpdateContextWithResponse(sessionID, currentContent)
+	}
 }
