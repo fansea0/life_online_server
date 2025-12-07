@@ -8,6 +8,7 @@ require (
 	github.com/cloudwego/eino-ext/components/model/ark v0.1.41
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/volcengine/volcengine-go-sdk v1.1.44
 )
