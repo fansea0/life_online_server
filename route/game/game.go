@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/sirupsen/logrus"
 	"io"
 	"life-online/service/game"
 	"net/http"
@@ -81,6 +82,7 @@ var upgrader = websocket.Upgrader{
 func GameWS(c *gin.Context) {
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		logrus.WithError(err).Error("Failed to upgrade connection")
 		return
 	}
 	defer ws.Close()
