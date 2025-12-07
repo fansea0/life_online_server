@@ -17,13 +17,13 @@ var (
 )
 
 func initSystemPrompt(name, identify string) ([]*schema.Message, error) {
-
 	msg, err := eino.CreateMessagesCommon(
 		config.GetSystemMsg(),
 		map[string]any{
 			"name":       name,
 			"identify":   identify,
 			"respFormat": config.GetRespFormat(),
+			"otherReqs":  config.GetOtherReqs(),
 		},
 		true,
 	)

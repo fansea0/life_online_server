@@ -8,6 +8,8 @@ import (
 	"github.com/cloudwego/eino/components/prompt"
 	"github.com/cloudwego/eino/schema"
 	"github.com/sirupsen/logrus"
+	"io"
+	"log"
 )
 
 type ModelConfig struct {
@@ -67,4 +69,31 @@ func Generate(model *ark.ChatModel, messages []*schema.Message, option ...model.
 		return nil, errors.New("messages is empty")
 	}
 	return model.Generate(context.Background(), messages, option...)
+}
+
+func Stream(model *ark.ChatModel, messages []*schema.Message, option ...model.Option) (outputStream *schema.StreamReader[*schema.Message], err error) {
+	if model == nil {
+		return nil, errors.New("model is nil")
+	}
+	if len(messages) == 0 {
+		return nil, errors.New("messages is empty")
+	}
+	return model.Stream(context.Background(), messages, option...)
+}
+
+func ReportStream(sr *schema.StreamReader[*schema.Message]) {
+	defer sr.Close()
+
+	i := 0
+	for {
+		message, err := sr.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Fatalf("recv failed: %v", err)
+		}
+		log.Printf("message[%d]: %+v\n", i, message)
+		i++
+	}
 }

@@ -3,695 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>人生模拟器 - 互动小说</title>
-    <!-- Tailwind CSS (Utility First) -->
+    <title>人生模拟器 - 副本选择</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-
     <style>
-        /* 自定义字体与动画 */
-        body {
-            font-family: 'Noto Sans SC', sans-serif;
-            background-color: #FAFAFA; /* 柔和的灰白背景 */
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .font-novel {
-            font-family: 'Noto Serif SC', serif;
-        }
-
-        /* 隐藏滚动条但保留滚动功能 */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* 打字机光标效果 */
-        .typing-cursor::after {
-            content: '|';
-            animation: blink 1s step-end infinite;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* 浮动属性动画 */
-        @keyframes floatUp {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-30px); opacity: 0; }
-        }
-        .float-stat {
-            position: absolute;
-            animation: floatUp 1.5s ease-out forwards;
-            pointer-events: none;
-            font-weight: bold;
-            z-index: 50;
-        }
-
-        /* 阶段转场文字淡入 */
-        @keyframes textFadeIn {
-            0% { opacity: 0; transform: scale(0.9); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        .phase-title-anim {
-            animation: textFadeIn 2s ease-out forwards;
-        }
-
-        /* 按钮点击波纹模拟 */
-        .btn-press:active {
-            transform: scale(0.98);
-            background-color: #F3F4F6;
-        }
-
-        /* 消息气泡小三角 */
-        .bubble-left::before {
-            content: "";
-            position: absolute;
-            left: -6px;
-            top: 10px;
-            width: 0;
-            height: 0;
-            border-top: 6px solid transparent;
-            border-bottom: 6px solid transparent;
-            border-right: 6px solid white;
-        }
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #FAFAFA; -webkit-tap-highlight-color: transparent; }
+        .font-novel { font-family: 'Noto Serif SC', serif; }
+        .card-select { border: 2px solid transparent; transition: all 0.2s; }
+        .card-select.selected { border-color: #111827; background-color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
-<body class="text-gray-800 h-screen w-screen overflow-hidden relative">
+<body class="text-gray-800 h-screen w-screen overflow-hidden relative flex flex-col">
 
-<!-- 音效资源 (使用 Data URI 或外部链接) -->
-<audio id="sfx-select" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3" preload="auto"></audio>
-<audio id="sfx-phase" src="https://assets.mixkit.co/sfx/preview/mixkit-magical-shine-reveal-244.mp3" preload="auto"></audio>
-<!-- 背景音乐 (可选，默认静音) -->
-<audio id="bgm-theme" loop src="https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3" preload="auto"></audio>
-
-<!-- ================= 1. 初始设置页面 (Setup Screen) ================= -->
-<div id="setup-screen" class="absolute inset-0 z-20 bg-white flex flex-col p-6 transition-opacity duration-500">
-    <div class="mt-8 mb-6 text-center">
-        <h1 class="text-3xl font-novel font-bold text-gray-900 mb-2">人生重开模拟</h1>
-        <p class="text-gray-500 text-sm">选择你的初始设定</p>
+    <!-- Header -->
+    <div class="mt-8 mb-6 text-center px-6">
+        <h1 class="text-3xl font-novel font-bold text-gray-900 mb-2">选择人生副本</h1>
+        <p class="text-gray-500 text-sm">开启一段全新的旅程</p>
     </div>
 
-    <!-- 选项卡片容器 -->
-    <div class="flex-1 overflow-y-auto space-y-6 pb-20">
-
-        <!-- 出生家庭 -->
-        <div class="space-y-3">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">出生环境</h3>
-            <div class="grid grid-cols-2 gap-3" id="setup-family">
-                <!-- JS 生成选项 -->
+    <!-- Content: Card List -->
+    <div class="flex-1 overflow-y-auto px-6 space-y-4 pb-24 no-scrollbar">
+        
+        <!-- Sanguo Card (Active) -->
+        <div id="card-sanguo" class="card-select p-5 rounded-xl bg-white shadow-sm cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:bg-gray-50" onclick="selectCard('sanguo')">
+            <div class="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                <i data-lucide="sword" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-gray-900">穿越三国</h3>
+                <p class="text-xs text-gray-500 mt-1">乱世豪杰，谁主沉浮</p>
+            </div>
+            <div class="check-icon opacity-0 text-gray-900 transition-opacity">
+                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
             </div>
         </div>
 
-        <!-- 初始天赋 -->
-        <div class="space-y-3">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">核心天赋</h3>
-            <div class="grid grid-cols-1 gap-3" id="setup-talent">
-                <!-- JS 生成选项 -->
+        <!-- Placeholder Cards -->
+        <div class="p-5 rounded-xl bg-gray-100 opacity-60 cursor-not-allowed flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                <i data-lucide="building-2" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-gray-900">现代都市</h3>
+                <p class="text-xs text-gray-500 mt-1">商海浮沉，职场逆袭 (开发中)</p>
+            </div>
+        </div>
+
+        <div class="p-5 rounded-xl bg-gray-100 opacity-60 cursor-not-allowed flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+                <i data-lucide="zap" class="w-6 h-6"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-gray-900">修真世界</h3>
+                <p class="text-xs text-gray-500 mt-1">逆天改命，渡劫飞升 (开发中)</p>
             </div>
         </div>
 
     </div>
 
-    <!-- 底部开始按钮 -->
+    <!-- Bottom Button -->
     <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent">
-        <button id="btn-start-game" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-gray-200 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-            开始人生
+        <button id="btn-start" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-gray-200 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed" disabled onclick="enterGame()">
+            开始副本
         </button>
     </div>
-</div>
 
-<!-- ================= 2. 游戏主界面 (Game Screen) ================= -->
-<div id="game-screen" class="absolute inset-0 z-10 bg-[#FAFAFA] flex flex-col opacity-0 pointer-events-none transition-opacity duration-500">
-
-    <!-- 顶部状态栏 -->
-    <div class="h-14 bg-white shadow-sm flex items-center justify-between px-4 z-20 border-b border-gray-100">
-        <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600" id="avatar-display">我</div>
-            <div class="flex flex-col">
-                <span class="text-xs text-gray-400">当前阶段</span>
-                <span class="text-sm font-bold font-novel" id="stage-display">...</span>
-            </div>
-        </div>
-        <!-- 属性展示 -->
-        <div class="flex items-center space-x-4 text-xs font-medium text-gray-600">
-            <div class="flex items-center space-x-1" id="stat-intel">
-                <i data-lucide="brain" class="w-3.5 h-3.5 text-blue-500"></i>
-                <span class="val">0</span>
-            </div>
-            <div class="flex items-center space-x-1" id="stat-mood">
-                <i data-lucide="smile" class="w-3.5 h-3.5 text-pink-500"></i>
-                <span class="val">0</span>
-            </div>
-            <div class="flex items-center space-x-1" id="stat-money">
-                <i data-lucide="coins" class="w-3.5 h-3.5 text-yellow-500"></i>
-                <span class="val">0</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 中间小说内容区 (Content) -->
-    <div id="story-container" class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar relative scroll-smooth">
-        <!-- 动态插入的内容块 -->
-        <div id="story-content" class="pb-32"></div>
-        <!-- 底部占位，防止内容被按钮遮挡 -->
-    </div>
-
-    <!-- 底部操作区 (Controls) -->
-    <div class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-4 pb-8 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
-
-        <!-- 加载状态 -->
-        <div id="loading-indicator" class="hidden flex items-center justify-center space-x-2 py-4">
-            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-            <span class="text-gray-400 text-sm ml-2">故事生成中...</span>
-        </div>
-
-        <!-- 选项按钮组 -->
-        <div id="choices-container" class="flex flex-col space-y-3">
-            <!-- JS 动态插入按钮 -->
-        </div>
-    </div>
-
-    <!-- 浮动属性层 -->
-    <div id="floating-layer" class="absolute inset-0 pointer-events-none overflow-hidden z-30"></div>
-</div>
-
-<!-- ================= 3. 阶段转场覆盖层 (Overlay) ================= -->
-<div id="phase-overlay" class="absolute inset-0 z-50 bg-gray-900 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-1000">
-    <div class="text-center px-6">
-        <h2 id="phase-title" class="text-3xl md:text-4xl text-white font-novel font-bold mb-4 tracking-widest"></h2>
-        <div class="w-12 h-1 bg-white/30 mx-auto rounded-full"></div>
-        <p id="phase-subtitle" class="text-gray-400 mt-4 text-sm font-light tracking-wide opacity-80"></p>
-    </div>
-</div>
-
-<script>
-    // ================= 配置与状态 =================
-    const CONFIG = {
-        typingSpeed: 30, // 打字速度 (ms)
-        phaseDuration: 2500, // 转场持续时间 (ms)
-    };
-
-    const STATE = {
-        started: false,
-        phase: 'setup', // setup, game
-        lifeStage: '',
-        attributes: {
-            intel: 0,
-            mood: 0,
-            money: 0
-        },
-        history: []
-    };
-
-    // 模拟数据库 / 配置数据
-    const DATA = {
-        families: [
-            { id: 'f1', title: '书香门第', desc: '父母都是大学教授', bonus: { intel: 10, mood: 5, money: 5 } },
-            { id: 'f2', title: '商业世家', desc: '家中经营跨国贸易', bonus: { intel: 5, mood: 0, money: 20 } },
-            { id: 'f3', title: '平凡家庭', desc: '温馨和睦的小康之家', bonus: { intel: 0, mood: 15, money: 5 } }
-        ],
-        talents: [
-            { id: 't1', title: '过目不忘', desc: '记忆力超群，学习效率+50%' },
-            { id: 't2', title: '社交达人', desc: '天生受人喜爱，心情不易低落' },
-            { id: 't3', title: '投资眼光', desc: '对金钱极其敏感，随机事件收益翻倍' }
-        ],
-        // 简单剧情树模拟
-        storyTree: {
-            'start': {
-                stage: '童年阶段',
-                sub: '0岁 - 6岁',
-                narrative: "你出生在一个阳光明媚的早晨。虽然有些吵闹，但你是全家人的珍宝。",
-                event: "周岁抓周仪式上，摆在你面前有三样东西。",
-                choices: [
-                    { id: 'c1_1', text: '抓起算盘', next: 'child_1' },
-                    { id: 'c1_2', text: '抓起书本', next: 'child_2' },
-                    { id: 'c1_3', text: '抓起玩具', next: 'child_3' }
-                ]
-            },
-            'child_1': { // 算盘
-                outcomeType: 'event',
-                outcome: "你毫不犹豫地抓住了金算盘，大人们都说你将来会赚大钱。",
-                changes: { money: 5, mood: 2 },
-                narrative: "稍大一些后，你对数字特别敏感，经常帮邻居算账换糖吃。",
-                dialogue: { speaker: "邻居王阿姨", text: "这孩子，脑子转得比计算器还快！" },
-                choices: [
-                    { id: 'c2_1', text: '用攒下的零花钱做小生意', next: 'youth_business' },
-                    { id: 'c2_2', text: '把钱存进储蓄罐', next: 'youth_school' }
-                ]
-            },
-            'child_2': { // 书本
-                outcomeType: 'event',
-                outcome: "你抓起了厚厚的字典，父亲笑得合不拢嘴。",
-                changes: { intel: 8 },
-                narrative: "童年的时光你大多在书房度过，虽然少了些玩伴，但你见识了广阔的世界。",
-                dialogue: { speaker: "父亲", text: "无论是天文还是地理，只要你想学，爸爸都支持你。" },
-                choices: [
-                    { id: 'c2_3', text: '参加全市奥数比赛', next: 'youth_school' },
-                    { id: 'c2_4', text: '尝试写童话投稿', next: 'youth_art' }
-                ]
-            },
-            'child_3': { // 玩具
-                outcomeType: 'event',
-                outcome: "你抓起了一个拨浪鼓，笑得非常开心。",
-                changes: { mood: 10 },
-                narrative: "你的童年无忧无虑，父母希望你只要快乐就好。你是孩子王，总能想出新游戏。",
-                dialogue: { speaker: "妈妈", text: "慢点跑！别摔着了！" },
-                choices: [
-                    { id: 'c2_5', text: '组织小伙伴探险', next: 'youth_art' },
-                    { id: 'c2_6', text: '在家里看动画片', next: 'youth_school' }
-                ]
-            },
-            // 少年阶段转场
-            'youth_business': {
-                newPhase: true,
-                stage: '少年阶段',
-                sub: '12岁 - 18岁',
-                narrative: "步入中学，当别的同学还在为零花钱发愁时，你已经有了自己的小金库。",
-                event: "同桌想向你借钱买限量版球鞋，承诺双倍奉还，但看起来不太靠谱。",
-                choices: [
-                    { id: 'y1', text: '借给他，签个字据', next: 'adult_start' },
-                    { id: 'y2', text: '委婉拒绝，推荐他去打工', next: 'adult_start' }
-                ]
-            },
-            'youth_school': {
-                newPhase: true,
-                stage: '少年阶段',
-                sub: '12岁 - 18岁',
-                narrative: "那是充满粉笔灰和蝉鸣的夏天。你的成绩一直是班里的焦点。",
-                event: "期末考试前夕，最好的朋友邀请你翘课去看偶像的演唱会。",
-                choices: [
-                    { id: 'y3', text: '当然去！青春只有一次', next: 'adult_start' },
-                    { id: 'y4', text: '拒绝，复习比较重要', next: 'adult_start' }
-                ]
-            },
-            'youth_art': {
-                newPhase: true,
-                stage: '少年阶段',
-                sub: '12岁 - 18岁',
-                narrative: "你的脑海里总是有天马行空的幻想。老师说你不务正业，但你知道那是艺术。",
-                event: "校庆晚会需要一个节目，你决定：",
-                choices: [
-                    { id: 'y5', text: '表演自编自导的话剧', next: 'adult_start' },
-                    { id: 'y6', text: '在后台负责灯光舞美', next: 'adult_start' }
-                ]
-            },
-            'adult_start': {
-                newPhase: true,
-                stage: '青年阶段',
-                sub: '18岁 - 25岁',
-                narrative: "成年的世界大门向你敞开。Demo演示到此结束，这只是无限可能的开始。",
-                outcome: "感谢体验！",
-                changes: { mood: 100 },
-                choices: [
-                    { id: 'reset', text: '重新开始人生', next: 'RESTART' }
-                ]
-            }
-        }
-    };
-
-    // ================= DOM 元素 =================
-    const els = {
-        setupScreen: document.getElementById('setup-screen'),
-        gameScreen: document.getElementById('game-screen'),
-        overlay: document.getElementById('phase-overlay'),
-
-        familyContainer: document.getElementById('setup-family'),
-        talentContainer: document.getElementById('setup-talent'),
-        startBtn: document.getElementById('btn-start-game'),
-
-        storyContent: document.getElementById('story-content'),
-        choicesContainer: document.getElementById('choices-container'),
-        loading: document.getElementById('loading-indicator'),
-        storyContainer: document.getElementById('story-container'),
-
-        avatar: document.getElementById('avatar-display'),
-        stageDisplay: document.getElementById('stage-display'),
-        stats: {
-            intel: document.querySelector('#stat-intel .val'),
-            mood: document.querySelector('#stat-mood .val'),
-            money: document.querySelector('#stat-money .val')
-        },
-
-        overlayTitle: document.getElementById('phase-title'),
-        overlaySub: document.getElementById('phase-subtitle'),
-
-        sfxSelect: document.getElementById('sfx-select'),
-        sfxPhase: document.getElementById('sfx-phase')
-    };
-
-    // ================= 逻辑控制 =================
-
-    let selectedSetup = { family: null, talent: null };
-
-    // 1. 初始化设置界面
-    function initSetup() {
+    <script>
         lucide.createIcons();
+        let selectedGame = null;
 
-        // 渲染家庭选项
-        DATA.families.forEach(fam => {
-            const el = document.createElement('div');
-            el.className = `p-4 border-2 border-transparent rounded-xl bg-gray-50 cursor-pointer transition-all hover:bg-white hover:shadow-md`;
-            el.innerHTML = `
-                    <div class="font-bold text-gray-800">${fam.title}</div>
-                    <div class="text-xs text-gray-500 mt-1">${fam.desc}</div>
-                `;
-            el.onclick = () => selectCard(el, 'family', fam);
-            els.familyContainer.appendChild(el);
-        });
+        function selectCard(gameId) {
+            // Reset all
+            document.querySelectorAll('.card-select').forEach(el => {
+                el.classList.remove('selected', 'border-gray-900', 'bg-white', 'shadow-md');
+                el.classList.add('border-transparent');
+                el.querySelector('.check-icon').classList.add('opacity-0');
+            });
 
-        // 渲染天赋选项
-        DATA.talents.forEach(tal => {
-            const el = document.createElement('div');
-            el.className = `p-4 border-2 border-transparent rounded-xl bg-gray-50 cursor-pointer transition-all hover:bg-white hover:shadow-md flex justify-between items-center`;
-            el.innerHTML = `
-                    <div>
-                        <div class="font-bold text-gray-800">${tal.title}</div>
-                        <div class="text-xs text-gray-500 mt-1">${tal.desc}</div>
-                    </div>
-                    <i data-lucide="sparkles" class="w-4 h-4 text-yellow-500 opacity-0 transition-opacity"></i>
-                `;
-            el.onclick = () => selectCard(el, 'talent', tal);
-            els.talentContainer.appendChild(el);
-            lucide.createIcons();
-        });
+            // Select Target
+            const target = document.getElementById('card-' + gameId);
+            target.classList.remove('border-transparent');
+            target.classList.add('selected', 'border-gray-900', 'bg-white', 'shadow-md');
+            target.querySelector('.check-icon').classList.remove('opacity-0');
 
-        els.startBtn.onclick = startGame;
-    }
-
-    function selectCard(el, type, data) {
-        playSfx('select');
-        // 清除同类选中样式
-        const container = type === 'family' ? els.familyContainer : els.talentContainer;
-        Array.from(container.children).forEach(child => {
-            child.classList.remove('border-gray-900', 'bg-white', 'shadow-md');
-            child.classList.add('border-transparent');
-            if(child.querySelector('.lucide-sparkles')) child.querySelector('.lucide-sparkles').classList.add('opacity-0');
-        });
-
-        // 添加选中样式
-        el.classList.remove('border-transparent');
-        el.classList.add('border-gray-900', 'bg-white', 'shadow-md');
-        if(el.querySelector('.lucide-sparkles')) el.querySelector('.lucide-sparkles').classList.remove('opacity-0');
-
-        selectedSetup[type] = data;
-
-        // 检查是否可以开始
-        els.startBtn.disabled = !(selectedSetup.family && selectedSetup.talent);
-    }
-
-    function playSfx(type) {
-        if(type === 'select') {
-            els.sfxSelect.currentTime = 0;
-            els.sfxSelect.play().catch(e=>{});
-        } else if (type === 'phase') {
-            els.sfxPhase.currentTime = 0;
-            els.sfxPhase.play().catch(e=>{});
-        }
-    }
-
-    // 2. 开始游戏
-    function startGame() {
-        // 初始化属性
-        STATE.attributes.intel = selectedSetup.family.bonus.intel;
-        STATE.attributes.mood = selectedSetup.family.bonus.mood;
-        STATE.attributes.money = selectedSetup.family.bonus.money;
-        updateStatsUI();
-
-        // 界面切换动画
-        els.setupScreen.classList.add('opacity-0', 'pointer-events-none');
-        setTimeout(() => {
-            els.setupScreen.style.display = 'none';
-            els.gameScreen.classList.remove('opacity-0', 'pointer-events-none');
-            els.gameScreen.classList.add('opacity-100', 'pointer-events-auto');
-
-            // 加载第一幕
-            loadScene('start');
-        }, 500);
-    }
-
-    // 3. 场景加载核心逻辑
-    async function loadScene(sceneId) {
-        if (sceneId === 'RESTART') {
-            location.reload();
-            return;
+            selectedGame = gameId;
+            document.getElementById('btn-start').disabled = false;
         }
 
-        const sceneData = DATA.storyTree[sceneId];
-        if (!sceneData) return;
-
-        // 清空旧选项
-        els.choicesContainer.innerHTML = '';
-        els.loading.classList.remove('hidden');
-
-        // 1. 检查是否需要阶段转场
-        if (sceneData.stage && sceneData.stage !== STATE.lifeStage) {
-            await playPhaseTransition(sceneData.stage, sceneData.sub || '');
-            STATE.lifeStage = sceneData.stage;
-            els.stageDisplay.innerText = STATE.lifeStage;
-        }
-
-        els.loading.classList.add('hidden');
-
-        // 2. 顺序流式渲染内容
-
-        // A. 事件结果 (Outcome) - 如果是上一题的结果
-        if (sceneData.outcome) {
-            await renderStreamCard('outcome', sceneData.outcome);
-            // 应用属性变化
-            if (sceneData.changes) {
-                applyStatsChange(sceneData.changes);
+        function enterGame() {
+            if (selectedGame === 'sanguo') {
+                window.location.href = 'sanguo.html';
             }
-            await wait(500);
         }
-
-        // B. 旁白 (Narrative)
-        if (sceneData.narrative) {
-            await renderStreamCard('narrative', sceneData.narrative);
-            await wait(300);
-        }
-
-        // C. 对话 (Dialogue)
-        if (sceneData.dialogue) {
-            await renderStreamCard('dialogue', sceneData.dialogue);
-            await wait(300);
-        }
-
-        // D. 当前事件描述 (Event) - 作为新的提示
-        if (sceneData.event) {
-            await renderStreamCard('event', sceneData.event);
-        }
-
-        // 3. 渲染选项
-        renderChoices(sceneData.choices);
-        scrollToBottom();
-    }
-
-    // 渲染器：生成 DOM 结构并执行打字机效果
-    async function renderStreamCard(type, content) {
-        const wrapper = document.createElement('div');
-        wrapper.className = "animate-fade-in mb-4 opacity-0 transition-opacity duration-500";
-
-        let textContainer;
-        let textToType = "";
-
-        if (type === 'outcome') {
-            // 结果卡片样式：柔和的背景
-            wrapper.innerHTML = `
-                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg shadow-sm">
-                        <h4 class="text-xs font-bold text-blue-400 mb-1 uppercase tracking-wider">结果</h4>
-                        <p class="text-sm text-gray-700 font-novel leading-relaxed js-type-target"></p>
-                    </div>
-                `;
-            textToType = content;
-        } else if (type === 'narrative') {
-            // 旁白样式：纯净文本
-            wrapper.innerHTML = `
-                    <div class="px-2">
-                        <p class="text-gray-600 font-novel leading-loose text-justify js-type-target"></p>
-                    </div>
-                `;
-            textToType = content;
-        } else if (type === 'dialogue') {
-            // 对话样式：气泡
-            wrapper.innerHTML = `
-                    <div class="flex items-start space-x-3">
-                        <div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                            ${content.speaker[0]}
-                        </div>
-                        <div class="relative bg-white p-3 rounded-lg rounded-tl-none shadow-sm border border-gray-100 bubble-left max-w-[85%]">
-                            <div class="text-xs text-gray-400 mb-1">${content.speaker}</div>
-                            <p class="text-gray-800 text-sm js-type-target"></p>
-                        </div>
-                    </div>
-                `;
-            textToType = content.text;
-        } else if (type === 'event') {
-            // 事件提示：加粗
-            wrapper.innerHTML = `
-                    <div class="mt-6 mb-2 px-2 border-l-2 border-gray-900 pl-3">
-                        <p class="text-gray-900 font-bold text-base js-type-target"></p>
-                    </div>
-                `;
-            textToType = content;
-        }
-
-        els.storyContent.appendChild(wrapper);
-
-        // 触发淡入
-        requestAnimationFrame(() => {
-            wrapper.classList.remove('opacity-0');
-        });
-        scrollToBottom();
-
-        textContainer = wrapper.querySelector('.js-type-target');
-        textContainer.classList.add('typing-cursor');
-
-        // 执行打字
-        await typeText(textContainer, textToType);
-        textContainer.classList.remove('typing-cursor');
-    }
-
-    function typeText(element, text) {
-        return new Promise(resolve => {
-            let i = 0;
-            function type() {
-                if (i < text.length) {
-                    element.textContent += text.charAt(i);
-                    i++;
-                    // 自动滚动跟随
-                    if (i % 10 === 0) scrollToBottom();
-                    setTimeout(type, CONFIG.typingSpeed);
-                } else {
-                    resolve();
-                }
-            }
-            type();
-        });
-    }
-
-    function renderChoices(choices) {
-        if (!choices) return;
-
-        choices.forEach((choice, index) => {
-            const btn = document.createElement('button');
-            btn.className = "w-full bg-white border border-gray-200 p-4 rounded-xl shadow-sm text-left text-sm font-medium text-gray-700 transition-all active:scale-95 hover:border-gray-400 hover:shadow-md flex items-center justify-between opacity-0 translate-y-2 animate-slide-up";
-            btn.style.animationDelay = `${index * 100}ms`;
-            btn.innerHTML = `
-                    <span>${choice.text}</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
-                `;
-
-            btn.onclick = () => {
-                playSfx('select');
-                // 禁用所有按钮
-                const allBtns = els.choicesContainer.querySelectorAll('button');
-                allBtns.forEach(b => {
-                    b.disabled = true;
-                    b.classList.add('opacity-50');
-                });
-                btn.classList.remove('opacity-50');
-                btn.classList.add('bg-gray-50', 'border-gray-900');
-
-                loadScene(choice.next);
-            };
-
-            els.choicesContainer.appendChild(btn);
-        });
-        lucide.createIcons();
-    }
-
-    function applyStatsChange(changes) {
-        for (let key in changes) {
-            const val = changes[key];
-            STATE.attributes[key] = (STATE.attributes[key] || 0) + val;
-
-            // 浮动动画
-            showFloatingText(key, val);
-        }
-        updateStatsUI();
-    }
-
-    function showFloatingText(key, val) {
-        const map = { intel: 'stat-intel', mood: 'stat-mood', money: 'stat-money' };
-        const targetId = map[key];
-        if (!targetId) return;
-
-        const targetEl = document.getElementById(targetId);
-        const rect = targetEl.getBoundingClientRect();
-
-        const floatEl = document.createElement('div');
-        floatEl.className = `float-stat text-sm ${val >= 0 ? 'text-green-500' : 'text-red-500'}`;
-        floatEl.innerText = `${val >= 0 ? '+' : ''}${val}`;
-        floatEl.style.left = `${rect.left + 10}px`;
-        floatEl.style.top = `${rect.top}px`;
-
-        document.getElementById('floating-layer').appendChild(floatEl);
-        setTimeout(() => floatEl.remove(), 1500);
-    }
-
-    function updateStatsUI() {
-        els.stats.intel.innerText = STATE.attributes.intel;
-        els.stats.mood.innerText = STATE.attributes.mood;
-        els.stats.money.innerText = STATE.attributes.money;
-    }
-
-    function playPhaseTransition(title, subtitle) {
-        return new Promise(resolve => {
-            playSfx('phase');
-
-            els.overlayTitle.innerText = title;
-            els.overlaySub.innerText = subtitle;
-            els.overlayTitle.classList.add('phase-title-anim');
-
-            els.overlay.classList.remove('opacity-0', 'pointer-events-none');
-            els.overlay.classList.add('opacity-100', 'pointer-events-auto');
-
-            setTimeout(() => {
-                els.overlay.classList.remove('opacity-100', 'pointer-events-auto');
-                els.overlay.classList.add('opacity-0', 'pointer-events-none');
-                els.overlayTitle.classList.remove('phase-title-anim'); // Reset animation
-                setTimeout(resolve, 500); // 等待淡出
-            }, CONFIG.phaseDuration);
-        });
-    }
-
-    function scrollToBottom() {
-        els.storyContainer.scrollTo({
-            top: els.storyContainer.scrollHeight,
-            behavior: 'smooth'
-        });
-    }
-
-    function wait(ms) {
-        return new Promise(r => setTimeout(r, ms));
-    }
-
-    // 添加CSS动画类
-    const style = document.createElement('style');
-    style.innerHTML = `
-            @keyframes slideUp {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            .animate-slide-up {
-                animation: slideUp 0.5s ease-out forwards;
-            }
-        `;
-    document.head.appendChild(style);
-
-    // 初始化
-    initSetup();
-
-</script>
+    </script>
 </body>
 </html>

@@ -11,7 +11,8 @@ func SetupRouter(r *gin.Engine) {
 	g := r.Group("/api/game")
 	{
 		g.POST("/action", GameAction)
-		g.POST("/chat", GameChat)
+		g.POST("/choice", GameChoice)
+		//g.POST("/choice_stream", GameChoiceStream)
 		g.POST("/start", GameStart)
 	}
 }
@@ -32,7 +33,7 @@ func GameAction(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func GameChat(c *gin.Context) {
+func GameChoice(c *gin.Context) {
 	var req struct {
 		SessionID string `json:"session_id"`
 		Choice    string `json:"choice"`
@@ -41,12 +42,14 @@ func GameChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	choice, err := game.HandleChoice(req.SessionID, req.Choice)
+	content, err := game.HandleChoice(req.SessionID, req.Choice)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, choice)
+	c.JSON(http.StatusOK, gin.H{
+		"content": content,
+	})
 }
 
 func GameStart(c *gin.Context) {
@@ -63,5 +66,5 @@ func GameStart(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"uuid": uuid, "content": content})
+	c.JSON(http.StatusOK, gin.H{"session_id": uuid, "content": content})
 }

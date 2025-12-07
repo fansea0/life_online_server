@@ -13,6 +13,7 @@ type envConfig struct {
 
 	SystemMsg  string
 	RespFormat string
+	OtherReqs  string
 }
 
 var (
@@ -44,4 +45,8 @@ func GetSystemMsg() string {
 
 func GetRespFormat() string {
 	return envConf.RespFormat
+}
+
+func GetOtherReqs() string {
+	return envConf.OtherReqs
 }
