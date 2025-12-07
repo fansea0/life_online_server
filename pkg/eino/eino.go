@@ -41,6 +41,23 @@ func CreateMessages(promptCfg *PromptConfig, params map[string]any) []*schema.Me
 	}
 	return messages
 }
+func CreateMessagesCommon(prompts string, params map[string]any, isSystem bool) ([]*schema.Message, error) {
+	message := schema.SystemMessage(prompts)
+	if !isSystem {
+		message = schema.UserMessage(prompts)
+	}
+	// 选择 GoTemplate 模板引擎,优点在于可以避免prompt包含json语句导致模板失效
+	// GoTemplate 接收模板语法为{{.field}},与Go语言语法一致
+	messages, err := prompt.FromMessages(schema.GoTemplate,
+		message,
+	).Format(context.Background(), params)
+
+	if err != nil {
+		logrus.WithError(err).Errorln("format template failed")
+		return nil, err
+	}
+	return messages, nil
+}
 
 func Generate(model *ark.ChatModel, messages []*schema.Message, option ...model.Option) (*schema.Message, error) {
 	if model == nil {

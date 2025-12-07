@@ -10,12 +10,14 @@ type envConfig struct {
 	ArkTextModelName   string
 	ArkTextModelApiKey string
 	ArkTextModelApiUrl string
+
+	SystemMsg  string
+	RespFormat string
 }
 
 var (
 	EnvConfigFile = "./config/env.toml"
-
-	envConf envConfig
+	envConf       envConfig
 )
 
 func InitEnvConf() {
@@ -34,4 +36,12 @@ func GetArkTextModelApiKey() string {
 
 func GetArkTextModelApiUrl() string {
 	return envConf.ArkTextModelApiUrl
+}
+
+func GetSystemMsg() string {
+	return envConf.SystemMsg
+}
+
+func GetRespFormat() string {
+	return envConf.RespFormat
 }

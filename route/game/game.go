@@ -11,6 +11,8 @@ func SetupRouter(r *gin.Engine) {
 	g := r.Group("/api/game")
 	{
 		g.POST("/action", GameAction)
+		g.POST("/chat", GameChat)
+		g.POST("/start", GameStart)
 	}
 }
 
@@ -28,4 +30,38 @@ func GameAction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func GameChat(c *gin.Context) {
+	var req struct {
+		SessionID string `json:"session_id"`
+		Choice    string `json:"choice"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	choice, err := game.HandleChoice(req.SessionID, req.Choice)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, choice)
+}
+
+func GameStart(c *gin.Context) {
+	var req struct {
+		Name     string `json:"name"`
+		Identify string `json:"identify"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, "参数错误")
+		return
+	}
+	uuid, content, err := game.StartGame(req.Name, req.Identify)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"uuid": uuid, "content": content})
 }
