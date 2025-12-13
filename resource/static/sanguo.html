@@ -10,8 +10,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <!-- SFX -->
-    <audio id="sfx-type" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-click-box-check-1120.mp3" preload="auto"></audio>
-    <audio id="sfx-click" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3" preload="auto"></audio>
+    <audio id="sfx-type" src="audio/click5.wav" preload="auto"></audio>
+    <audio id="sfx-click" src="audio/click5.wav" preload="auto"></audio>
+    <audio id="sfx-button" src="audio/button.wav" preload="auto"></audio>
+    <!-- Background Music -->
+    <audio id="bgm-sanguo" src="audio/sanguo_background.mp3" preload="auto" loop></audio>
 
     <style>
         /* Shared Styles from index.html */
@@ -59,10 +62,9 @@
             <div class="space-y-2">
                 <label class="text-sm font-bold text-gray-700">身份</label>
                 <div class="space-y-2" id="identity-list">
-                    <!-- Options -->
-                    <div class="p-4 border-2 border-gray-900 bg-white rounded-xl cursor-pointer shadow-md flex items-center justify-between">
-                        <span class="text-sm font-medium">黄巾起义的反叛联盟军的一名小将</span>
-                        <i data-lucide="check-circle" class="w-5 h-5 text-gray-900"></i>
+                    <!-- Options will be loaded dynamically -->
+                    <div class="p-4 border-2 border-gray-300 bg-gray-50 rounded-xl shadow-sm flex items-center justify-center">
+                        <span class="text-sm text-gray-500">正在加载身份选项...</span>
                     </div>
                 </div>
             </div>
@@ -80,7 +82,7 @@
         
         <!-- Header -->
         <div class="h-14 bg-white shadow-sm flex items-center px-4 z-20 border-b border-gray-100">
-            <button onclick="location.href='index.html'" class="mr-3 text-gray-500 hover:text-gray-900 transition-colors"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <button onclick="playButtonSound(); location.href='index.html'" class="mr-3 text-gray-500 hover:text-gray-900 transition-colors"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
             <span class="font-bold text-gray-900">三国模拟</span>
         </div>
 
@@ -121,23 +123,106 @@
             choicesContainer: document.getElementById('choices-container'),
             loading: document.getElementById('loading-indicator'),
             sfxType: document.getElementById('sfx-type'),
-            sfxClick: document.getElementById('sfx-click')
+            sfxClick: document.getElementById('sfx-click'),
+            sfxButton: document.getElementById('sfx-button'),
+            bgmSanguo: document.getElementById('bgm-sanguo')
         };
 
         // Init SFX Volume
-        if(els.sfxType) els.sfxType.volume = 0.6;
+        if(els.sfxType) els.sfxType.volume = 0.3; // Lower volume for typing sound
         if(els.sfxClick) els.sfxClick.volume = 0.4;
+        if(els.sfxButton) els.sfxButton.volume = 0.5;
+        if(els.bgmSanguo) els.bgmSanguo.volume = 0.3; // Background music at moderate volume
 
-        function unlockAudioOnce() {
+        // Enhanced audio unlock function with better error handling
+        async function unlockAudioOnce() {
             if (STATE.audioUnlocked) return;
-            STATE.audioUnlocked = true;
-            [els.sfxType, els.sfxClick].forEach(a => {
-                if (!a) return;
-                a.play().then(() => {
-                    a.pause();
-                    a.currentTime = 0;
-                }).catch(()=>{});
-            });
+
+            console.log('Attempting to unlock audio...');
+            try {
+                // Try to unlock Web Audio API first
+                if (window.AudioContext || window.webkitAudioContext) {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                        console.log('Web Audio API unlocked');
+                    }
+                }
+
+                // Try to play each audio element briefly (except background music)
+                const unlockPromises = [els.sfxType, els.sfxClick, els.sfxButton].map(audio => {
+                    if (!audio) return Promise.resolve();
+
+                    return audio.play().then(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        console.log(`Audio ${audio.id} unlocked successfully`);
+                        return true;
+                    }).catch(e => {
+                        console.warn(`Audio unlock failed for ${audio.id}:`, e.message);
+                        return false;
+                    });
+                });
+
+                // Load background music (but don't play it during unlock)
+                if (els.bgmSanguo) {
+                    try {
+                        // Just ensure it's loaded, don't play it yet
+                        els.bgmSanguo.load();
+                        console.log('Background music loaded');
+                    } catch (e) {
+                        console.warn('Failed to load background music:', e.message);
+                    }
+                }
+
+                const results = await Promise.all(unlockPromises);
+                const allUnlocked = results.every(result => result === true);
+
+                if (allUnlocked) {
+                    STATE.audioUnlocked = true;
+                    console.log('All audio unlocked successfully');
+                } else {
+                    console.warn('Some audio elements failed to unlock, but continuing...');
+                    STATE.audioUnlocked = true; // Allow attempts anyway
+                }
+            } catch (error) {
+                console.error('Audio unlock error:', error);
+                STATE.audioUnlocked = true; // Allow attempts anyway
+            }
+        }
+
+        // Safe audio play function with retry mechanism
+        function playAudio(audioElement, maxRetries = 2) {
+            if (!audioElement || !STATE.audioUnlocked) {
+                return Promise.resolve();
+            }
+
+            let retries = 0;
+
+            const attemptPlay = () => {
+                return audioElement.play().catch(error => {
+                    console.warn(`Audio play failed (attempt ${retries + 1}):`, error.message);
+
+                    if (retries < maxRetries) {
+                        retries++;
+                        // Reset audio state and retry
+                        audioElement.currentTime = 0;
+                        return new Promise(resolve => {
+                            setTimeout(() => resolve(attemptPlay()), 100);
+                        });
+                    } else {
+                        console.warn('Audio play failed after max retries');
+                        return Promise.resolve();
+                    }
+                });
+            };
+
+            return attemptPlay();
+        }
+
+        // Play button click sound
+        function playButtonSound() {
+            playAudio(els.sfxButton);
         }
 
         // Helper: Add task to queue
@@ -219,22 +304,110 @@
         // Initialize WS
         initWebSocket();
 
+        // Load identity list after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadIdentityList);
+        } else {
+            loadIdentityList();
+        }
+
         const randomNames = ["陈凡", "林风", "叶天", "萧炎", "方寒", "陆雪", "楚云", "苏铭"];
+        let selectedIdentity = null;
+
         function randomName() {
-            unlockAudioOnce();
-            els.sfxClick.currentTime = 0;
-            els.sfxClick.play().catch(()=>{});
+            playButtonSound();
             const idx = Math.floor(Math.random() * randomNames.length);
             els.nameInput.value = randomNames[idx];
         }
 
+        async function loadIdentityList() {
+            try {
+                const response = await fetch('/api/game/identify_list?scope=1', {
+                    method: 'GET'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                renderIdentityOptions(data.identities);
+            } catch (error) {
+                console.error('Error loading identities:', error);
+                // Fallback to default identity
+                renderIdentityOptions([{
+                    id: 1,
+                    description: "黄巾起义的反叛联盟军的一名小将"
+                }]);
+            }
+        }
+
+        function renderIdentityOptions(identities) {
+            const container = document.getElementById('identity-list');
+            container.innerHTML = '';
+
+            identities.forEach(identity => {
+                const option = document.createElement('div');
+                option.className = "p-4 border-2 border-gray-200 bg-white rounded-xl cursor-pointer shadow-sm hover:border-gray-900 transition-colors flex items-center justify-between";
+                option.innerHTML = `
+                    <span class="text-sm font-medium">${identity.description}</span>
+                    <i data-lucide="check-circle" class="w-5 h-5 text-gray-400"></i>
+                `;
+
+                // Ensure the icon element exists
+                const checkIcon = option.querySelector('i');
+                if (!checkIcon) {
+                    console.error('Failed to create check icon for identity:', identity.description);
+                    return;
+                }
+
+                option.onclick = () => {
+                    playButtonSound();
+                    selectIdentity(identity, option);
+                };
+                container.appendChild(option);
+            });
+
+            lucide.createIcons();
+
+            // Select first identity by default
+            if (identities.length > 0) {
+                const firstOption = container.firstElementChild;
+                selectIdentity(identities[0], firstOption);
+            }
+        }
+
+        function selectIdentity(identity, element) {
+            // Remove selection from all options
+            const options = document.querySelectorAll('#identity-list > div');
+            options.forEach(opt => {
+                opt.classList.remove('border-gray-900', 'bg-gray-50');
+                opt.classList.add('border-gray-200', 'bg-white');
+                const checkIcon = opt.querySelector('i');
+                if (checkIcon) {
+                    checkIcon.classList.remove('text-gray-900');
+                    checkIcon.classList.add('text-gray-400');
+                }
+            });
+
+            // Select current option
+            element.classList.remove('border-gray-200', 'bg-white');
+            element.classList.add('border-gray-900', 'bg-gray-50');
+            const checkIcon = element.querySelector('i');
+            if (checkIcon) {
+                checkIcon.classList.remove('text-gray-400');
+                checkIcon.classList.add('text-gray-900');
+            }
+
+            selectedIdentity = identity;
+        }
+
         async function startExplore() {
-            unlockAudioOnce();
-            els.sfxClick.currentTime = 0;
-            els.sfxClick.play().catch(()=>{});
+            playButtonSound();
+            await unlockAudioOnce();
 
             const name = els.nameInput.value.trim() || "陈凡";
-            const identify = "黄巾起义的反叛联盟军的一名小将";
+            const identify = selectedIdentity ? selectedIdentity.description : "黄巾起义的反叛联盟军的一名小将";
 
             // Switch Screen
             els.setup.classList.add('opacity-0', 'pointer-events-none');
@@ -242,6 +415,16 @@
             
             els.game.classList.remove('opacity-0', 'pointer-events-none');
             els.game.classList.add('opacity-100', 'pointer-events-auto');
+
+            // Start background music when game starts
+            if (els.bgmSanguo) {
+                try {
+                    await playAudio(els.bgmSanguo);
+                    console.log('Background music started');
+                } catch (error) {
+                    console.warn('Failed to start background music:', error);
+                }
+            }
 
             showLoading(true);
             STATE.buffer = "";
@@ -261,10 +444,8 @@
             }
         }
 
-        async function submitChoice(choiceIdx) {
-            unlockAudioOnce();
-            els.sfxClick.currentTime = 0;
-            els.sfxClick.play().catch(()=>{});
+        async function submitChoice(choiceIdx, choiceText) {
+            playButtonSound();
 
             // Disable buttons
             const buttons = els.choicesContainer.querySelectorAll('button');
@@ -284,7 +465,7 @@
                 STATE.ws.send(JSON.stringify({
                     type: 'choice',
                     session_id: STATE.sessionId,
-                    choice: String(choiceIdx)
+                    choice: choiceText || String(choiceIdx)
                 }));
             } else {
                 appendSystemMsg("连接未就绪，请稍候...");
@@ -329,11 +510,14 @@
                 const btn = document.createElement('button');
                 btn.className = "w-full bg-white border border-gray-200 p-4 rounded-xl shadow-sm text-left text-sm font-medium text-gray-700 transition-all active:scale-95 hover:border-gray-900 flex items-center justify-between";
                 btn.innerHTML = `<span>${c.idx}. ${c.text}</span><i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>`;
-                btn.onclick = () => submitChoice(parseInt(c.idx));
+                btn.onclick = () => {
+                    playButtonSound();
+                    submitChoice(parseInt(c.idx), c.text);
+                };
                 els.choicesContainer.appendChild(btn);
             });
             lucide.createIcons();
-            
+
             // Reset state
             STATE.isChoosing = false;
         }
@@ -423,10 +607,10 @@
                         const currentStr = rawText.substring(0, i);
                         el.innerHTML = isMarkdown ? marked.parse(currentStr) : currentStr;
                         
-                        // Play SFX every few chars to avoid noise
-                        if (i % 3 === 0) {
-                            els.sfxType.currentTime = 0;
-                            els.sfxType.play().catch(e=>{});
+                        // Play SFX less frequently to avoid noise - adjust based on text length
+                        const sfxInterval = rawText.length > 100 ? 8 : 6; // Longer texts get fewer sounds
+                        if (i % sfxInterval === 0) {
+                            playAudio(els.sfxType);
                         }
 
                         scrollToBottom();
