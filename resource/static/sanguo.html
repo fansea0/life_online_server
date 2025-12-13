@@ -593,8 +593,8 @@
         async function typeText(el, rawText, isMarkdown) {
              return new Promise(resolve => {
                 let i = 0;
-                // Faster typing for longer text
-                const speed = rawText.length > 50 ? 30 : 50; 
+                // Slightly slower typing for better readability
+                const speed = rawText.length > 50 ? 40 : 65; 
                 el.classList.add('typing-cursor');
                 
                 function type() {

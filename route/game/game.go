@@ -88,7 +88,6 @@ func GameWS(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
-
 	for {
 		var req struct {
 			Type      string `json:"type"` // "start" or "choice"
