@@ -27,19 +27,22 @@ func SaveState(state *GameState) {
 	store[state.SessionID] = state
 }
 
-func CreateNewGame() *GameState {
+func CreateNewGame(name, identity string) *GameState {
 	sessionID := uuid.New().String()
+	init := LookupIdentity(identity)
+	// 复制初始属性，避免共享 map
+	attrs := make(map[string]int, len(init.Attributes))
+	for k, v := range init.Attributes {
+		attrs[k] = v
+	}
 	state := &GameState{
-		SessionID: sessionID,
-		Name:      "你",
-		Age:       0,
-		Attributes: map[string]int{
-			"名望": 5,
-			"人心": 5,
-			"实力": 5,
-			"机缘": 5,
-		},
-		Summary: "你出生了，这是一个新的开始。",
+		SessionID:        sessionID,
+		Name:             name,
+		Identity:         identity,
+		IdentityAffinity: init.IdentityAffinity,
+		Age:              0,
+		Attributes:       attrs,
+		Summary:          "你初到乱世，前路未明。",
 	}
 	SaveState(state)
 	return state

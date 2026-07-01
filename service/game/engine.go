@@ -30,7 +30,7 @@ func RunGameStep(sessionID string, choice string) (*GameResponse, error) {
 	state := GetState(sessionID)
 	if state == nil {
 		// 如果没有 Session，新建一个
-		state = CreateNewGame()
+		state = CreateNewGame("你", "")
 		choice = "开始新的人生" // 初始动作
 	}
 
