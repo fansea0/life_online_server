@@ -1,14 +1,15 @@
 package game
 
-// GameState 玩家当前状态
+// GameState 玩家当前状态（三国 4 维）
 type GameState struct {
-	SessionID  string         `json:"session_id"`
-	Name       string         `json:"name"`
-	Age        int            `json:"age"`
-	Attributes map[string]int `json:"attributes"` // 例如: {"智力": 10, "体质": 8, "财富": 0}
-	Inventory  []string       `json:"inventory"`  // 背包
-	Summary    string         `json:"summary"`    // 之前的剧情摘要
-	IsGameOver bool           `json:"is_game_over"`
+	SessionID        string         `json:"session_id"`
+	Name             string         `json:"name"`
+	Identity         string         `json:"identity"`          // 初始身份描述
+	IdentityAffinity string         `json:"identity_affinity"` // 身份倾向自然语言描述
+	Age              int            `json:"age"`
+	Attributes       map[string]int `json:"attributes"`        // 名望/人心/实力/机缘
+	Summary          string         `json:"summary"`           // 前情摘要，回灌 AI 上下文
+	IsGameOver       bool           `json:"is_game_over"`
 }
 
 // UserAction 用户发送的请求

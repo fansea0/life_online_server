@@ -34,13 +34,12 @@ func CreateNewGame() *GameState {
 		Name:      "你",
 		Age:       0,
 		Attributes: map[string]int{
-			"智力": 5,
-			"体质": 5,
-			"家境": 5,
-			"快乐": 5,
+			"名望": 5,
+			"人心": 5,
+			"实力": 5,
+			"机缘": 5,
 		},
-		Inventory: []string{},
-		Summary:   "你出生了，这是一个新的开始。",
+		Summary: "你出生了，这是一个新的开始。",
 	}
 	SaveState(state)
 	return state
