@@ -1,5 +1,7 @@
 package game
 
+import "strings"
+
 // IdentityInit 身份初始状态与倾向
 type IdentityInit struct {
 	Attributes       map[string]int // 名望/人心/实力/机缘 初始值
@@ -149,4 +151,25 @@ func panelFromState(s *GameState) map[string]string {
 		panel[dim] = tiers[idx]
 	}
 	return panel
+}
+
+var stateHints = map[string]string{
+	"名望": "你如今颇有声名，言行皆为各方关注",
+	"人心": "你已深得人心，众人愿为你效力",
+	"实力": "你如今手握兵权，行事更受各方瞩目",
+	"机缘": "你近来机缘不断，似有天意相助",
+}
+
+// stateHintFromState 高维度（>=5）态势提示，多维逗号连接，全低返回空串
+func stateHintFromState(s *GameState) string {
+	parts := make([]string, 0, len(validDims))
+	for _, dim := range validDims {
+		if s.Attributes[dim] >= 5 {
+			parts = append(parts, stateHints[dim])
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, "；")
 }

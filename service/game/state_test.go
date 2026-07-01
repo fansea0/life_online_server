@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestLookupIdentity_Known(t *testing.T) {
 	init := LookupIdentity("魏国的一名谋士")
@@ -122,5 +125,24 @@ func TestPanelFromStateAllDims(t *testing.T) {
 	panel := panelFromState(s)
 	if panel["名望"] != "名震一方" || panel["人心"] != "众心所向" || panel["实力"] != "可堪一用" || panel["机缘"] != "偶有际遇" {
 		t.Fatalf("all dims: got %+v", panel)
+	}
+}
+
+func TestStateHintEmptyWhenLow(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 4, "人心": 4, "实力": 4, "机缘": 4}}
+	if h := stateHintFromState(s); h != "" {
+		t.Fatalf("low state hint should be empty, got %q", h)
+	}
+}
+
+func TestStateHintWhenHigh(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 5, "人心": 4, "实力": 7, "机缘": 4}}
+	h := stateHintFromState(s)
+	if h == "" {
+		t.Fatalf("expected non-empty hint")
+	}
+	// 名望与实力达标，应包含两句
+	if !strings.Contains(h, "声名") || !strings.Contains(h, "兵权") {
+		t.Fatalf("hint missing dims: %q", h)
 	}
 }
