@@ -17,6 +17,8 @@ var (
 	msgContextMap = make(map[string][]*schema.Message)
 )
 
+const initialGamePrompt = "开始游戏，请根据我的姓名和初始身份生成开局剧情，并在结尾提供三个可选行动。"
+
 func initSystemPrompt(name, identify string) ([]*schema.Message, error) {
 	msg, err := eino.CreateMessagesCommon(
 		config.GetSystemMsg(),
@@ -33,14 +35,20 @@ func initSystemPrompt(name, identify string) ([]*schema.Message, error) {
 	}
 	return msg, nil
 }
+
+func appendInitialGamePrompt(msgContext []*schema.Message) []*schema.Message {
+	return append(msgContext, schema.UserMessage(initialGamePrompt))
+}
+
 func StartGame(name, identify string) (string, string, error) {
 	msgContext, err := initSystemPrompt(name, identify)
 	if err != nil {
 		return "", "", err
 	}
+	msgContext = appendInitialGamePrompt(msgContext)
 	rspMsg, err := eino.Generate(model, msgContext)
 	if err != nil {
-		logrus.WithError(err).Error("Generate failed")
+		logrus.WithError(err).Error("StartGame: eino.Generate failed")
 		return "", "", err
 	}
 	newUUID, _ := uuid.NewUUID()
@@ -56,9 +64,10 @@ func StartGameStream(name, identify string) (string, *schema.StreamReader[*schem
 	if err != nil {
 		return "", nil, err
 	}
+	msgContext = appendInitialGamePrompt(msgContext)
 	streamReader, err := eino.Stream(model, msgContext)
 	if err != nil {
-		logrus.WithError(err).Error("Stream failed")
+		logrus.WithError(err).Error("StartGameStream: eino.Stream failed")
 		return "", nil, err
 	}
 	newUUID, _ := uuid.NewUUID()

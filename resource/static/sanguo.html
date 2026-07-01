@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="audio_guard.js"></script>
 
     <!-- SFX -->
     <audio id="sfx-type" src="audio/click5.wav" preload="auto"></audio>
@@ -134,34 +135,48 @@
         if(els.sfxButton) els.sfxButton.volume = 0.5;
         if(els.bgmSanguo) els.bgmSanguo.volume = 0.3; // Background music at moderate volume
 
+        const audioUnlockTimeoutMs = 800;
+
         // Enhanced audio unlock function with better error handling
         async function unlockAudioOnce() {
             if (STATE.audioUnlocked) return;
 
-            console.log('Attempting to unlock audio...');
+            console.log('unlockAudioOnce: attempting to unlock audio');
+            let allUnlocked = true;
             try {
                 // Try to unlock Web Audio API first
                 if (window.AudioContext || window.webkitAudioContext) {
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     if (audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                        console.log('Web Audio API unlocked');
+                        const resumed = await AudioGuard.settleWithin(
+                            () => audioContext.resume(),
+                            audioUnlockTimeoutMs
+                        );
+                        if (resumed) {
+                            console.log('unlockAudioOnce: Web Audio API unlocked');
+                        } else {
+                            allUnlocked = false;
+                            console.warn('unlockAudioOnce: Web Audio API unlock timed out or failed');
+                        }
                     }
                 }
 
                 // Try to play each audio element briefly (except background music)
-                const unlockPromises = [els.sfxType, els.sfxClick, els.sfxButton].map(audio => {
-                    if (!audio) return Promise.resolve();
+                const unlockPromises = [els.sfxType, els.sfxClick, els.sfxButton].map(async audio => {
+                    if (!audio) return true;
 
-                    return audio.play().then(() => {
+                    const unlocked = await AudioGuard.settleWithin(async () => {
+                        await audio.play();
                         audio.pause();
                         audio.currentTime = 0;
-                        console.log(`Audio ${audio.id} unlocked successfully`);
-                        return true;
-                    }).catch(e => {
-                        console.warn(`Audio unlock failed for ${audio.id}:`, e.message);
-                        return false;
-                    });
+                    }, audioUnlockTimeoutMs);
+
+                    if (unlocked) {
+                        console.log(`unlockAudioOnce: audio ${audio.id} unlocked successfully`);
+                    } else {
+                        console.warn(`unlockAudioOnce: audio ${audio.id} unlock timed out or failed`);
+                    }
+                    return unlocked;
                 });
 
                 // Load background music (but don't play it during unlock)
@@ -169,25 +184,24 @@
                     try {
                         // Just ensure it's loaded, don't play it yet
                         els.bgmSanguo.load();
-                        console.log('Background music loaded');
+                        console.log('unlockAudioOnce: background music loaded');
                     } catch (e) {
-                        console.warn('Failed to load background music:', e.message);
+                        console.warn('unlockAudioOnce: failed to load background music', e.message);
                     }
                 }
 
                 const results = await Promise.all(unlockPromises);
-                const allUnlocked = results.every(result => result === true);
+                allUnlocked = allUnlocked && results.every(result => result === true);
 
                 if (allUnlocked) {
-                    STATE.audioUnlocked = true;
-                    console.log('All audio unlocked successfully');
+                    console.log('unlockAudioOnce: all audio unlocked successfully');
                 } else {
-                    console.warn('Some audio elements failed to unlock, but continuing...');
-                    STATE.audioUnlocked = true; // Allow attempts anyway
+                    console.warn('unlockAudioOnce: some audio elements failed to unlock, continuing without blocking');
                 }
             } catch (error) {
-                console.error('Audio unlock error:', error);
-                STATE.audioUnlocked = true; // Allow attempts anyway
+                console.warn('unlockAudioOnce: audio unlock failed, continuing without blocking', error);
+            } finally {
+                STATE.audioUnlocked = true;
             }
         }
 
@@ -199,22 +213,21 @@
 
             let retries = 0;
 
-            const attemptPlay = () => {
-                return audioElement.play().catch(error => {
-                    console.warn(`Audio play failed (attempt ${retries + 1}):`, error.message);
+            const attemptPlay = async () => {
+                const played = await AudioGuard.settleWithin(
+                    () => audioElement.play(),
+                    audioUnlockTimeoutMs
+                );
+                if (played) return;
 
-                    if (retries < maxRetries) {
-                        retries++;
-                        // Reset audio state and retry
-                        audioElement.currentTime = 0;
-                        return new Promise(resolve => {
-                            setTimeout(() => resolve(attemptPlay()), 100);
-                        });
-                    } else {
-                        console.warn('Audio play failed after max retries');
-                        return Promise.resolve();
-                    }
-                });
+                console.warn(`playAudio: audio play timed out or failed (attempt ${retries + 1})`);
+                if (retries < maxRetries) {
+                    retries++;
+                    audioElement.currentTime = 0;
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    return attemptPlay();
+                }
+                console.warn('playAudio: audio play failed after max retries');
             };
 
             return attemptPlay();

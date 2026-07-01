@@ -1,6 +1,6 @@
 module life-online
 
-go 1.24.5
+go 1.24.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
