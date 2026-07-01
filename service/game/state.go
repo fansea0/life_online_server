@@ -126,3 +126,27 @@ func applyDelta(s *GameState, delta map[string]int) {
 	}
 	clampState(s)
 }
+
+var panelTiers = map[string][]string{
+	"名望": {"籍籍无名", "小有名气", "颇有声名", "威名渐显", "名震一方", "天下知名"},
+	"人心": {"无人归附", "略有人望", "初得民望", "众心所向", "深得人心", "万众归心"},
+	"实力": {"手无寸铁", "勉强自保", "可堪一用", "颇具战力", "羽翼渐丰", "兵强马壮"},
+	"机缘": {"时运不济", "偶有际遇", "尚需时运", "机缘渐至", "福星高照", "天命所归"},
+}
+
+// panelFromState 派生 4 维定性档位名
+func panelFromState(s *GameState) map[string]string {
+	panel := make(map[string]string, len(validDims))
+	for _, dim := range validDims {
+		tiers := panelTiers[dim]
+		idx := s.Attributes[dim] / 2
+		if idx < 0 {
+			idx = 0
+		}
+		if idx > 5 {
+			idx = 5
+		}
+		panel[dim] = tiers[idx]
+	}
+	return panel
+}

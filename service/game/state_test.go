@@ -95,3 +95,32 @@ func TestApplyDeltaIgnoresUnknownKey(t *testing.T) {
 		t.Fatalf("名望 should be 6, got %d", s.Attributes["名望"])
 	}
 }
+
+func TestPanelFromStateTiers(t *testing.T) {
+	cases := []struct {
+		val  int
+		want string
+	}{
+		{0, "籍籍无名"}, {1, "籍籍无名"},
+		{2, "小有名气"}, {3, "小有名气"},
+		{4, "颇有声名"}, {5, "颇有声名"},
+		{6, "威名渐显"}, {7, "威名渐显"},
+		{8, "名震一方"}, {9, "名震一方"},
+		{10, "天下知名"},
+	}
+	for _, c := range cases {
+		s := &GameState{Attributes: map[string]int{"名望": c.val, "人心": 0, "实力": 0, "机缘": 0}}
+		panel := panelFromState(s)
+		if panel["名望"] != c.want {
+			t.Fatalf("名望 %d: got %q, want %q", c.val, panel["名望"], c.want)
+		}
+	}
+}
+
+func TestPanelFromStateAllDims(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 8, "人心": 6, "实力": 4, "机缘": 2}}
+	panel := panelFromState(s)
+	if panel["名望"] != "名震一方" || panel["人心"] != "众心所向" || panel["实力"] != "可堪一用" || panel["机缘"] != "偶有际遇" {
+		t.Fatalf("all dims: got %+v", panel)
+	}
+}
