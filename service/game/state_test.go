@@ -201,3 +201,36 @@ func TestParseHiddenPayloadDeltaOnlyKnownDims(t *testing.T) {
 		t.Fatalf("名望 should be 1, got %d", p.Delta["名望"])
 	}
 }
+
+func TestFinalizeTurnAppliesDeltaAndClamps(t *testing.T) {
+	s := CreateNewGame("陈凡", "魏国的一名谋士")
+	before := s.Attributes["名望"]
+	raw := `{"summary":"你献策退敌","state_delta":{"名望":1,"实力":-1},"options":["乘胜追击","收兵回营","上书请功"]}`
+	res, ok := FinalizeTurn(s.SessionID, raw)
+	if !ok {
+		t.Fatalf("expected ok=true")
+	}
+	after := GetState(s.SessionID).Attributes["名望"]
+	if after != before+1 {
+		t.Fatalf("名望 should increase by 1: before %d after %d", before, after)
+	}
+	if res.Panel["名望"] == "" {
+		t.Fatalf("panel should not be empty")
+	}
+	if res.Delta["名望"] != "+" || res.Delta["实力"] != "-" {
+		t.Fatalf("delta direction: got %+v", res.Delta)
+	}
+	if len(res.Options) != 3 || res.Options[0] != "乘胜追击" {
+		t.Fatalf("options: got %+v", res.Options)
+	}
+	if GetState(s.SessionID).Summary != "你献策退敌" {
+		t.Fatalf("summary should be persisted, got %q", GetState(s.SessionID).Summary)
+	}
+}
+
+func TestFinalizeTurnNoSession(t *testing.T) {
+	_, ok := FinalizeTurn("nonexistent-session", `{"options":["a","b","c"]}`)
+	if ok {
+		t.Fatalf("expected ok=false for nonexistent session")
+	}
+}

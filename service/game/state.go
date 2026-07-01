@@ -233,3 +233,46 @@ func normalizeOptions(opts []string) []string {
 	}
 	return result
 }
+
+// TurnResult 一轮收尾后推给前端的结果
+type TurnResult struct {
+	Panel   map[string]string // 定性档位名
+	Delta   map[string]string // 方向 "+"/"-"/"0"
+	Options []string          // 下一轮 3 选项
+}
+
+// FinalizeTurn 解析隐藏部分、叠加 delta、持久化、派生面板与方向。
+// ok=false 表示会话状态不存在，调用方降级（不更新面板）。
+func FinalizeTurn(sessionID, hiddenRaw string) (TurnResult, bool) {
+	state := GetState(sessionID)
+	if state == nil {
+		return TurnResult{}, false
+	}
+	payload := parseHiddenPayload(hiddenRaw)
+
+	// 记录方向（叠加前）
+	deltaDir := make(map[string]string, len(validDims))
+	for _, dim := range validDims {
+		d := payload.Delta[dim]
+		switch {
+		case d > 0:
+			deltaDir[dim] = "+"
+		case d < 0:
+			deltaDir[dim] = "-"
+		default:
+			deltaDir[dim] = "0"
+		}
+	}
+
+	applyDelta(state, payload.Delta)
+	if payload.Summary != "" {
+		state.Summary = payload.Summary
+	}
+	SaveState(state)
+
+	return TurnResult{
+		Panel:   panelFromState(state),
+		Delta:   deltaDir,
+		Options: payload.Options,
+	}, true
+}
