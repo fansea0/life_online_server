@@ -1,6 +1,11 @@
 package game
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/sirupsen/logrus"
+)
 
 // IdentityInit 身份初始状态与倾向
 type IdentityInit struct {
@@ -172,4 +177,59 @@ func stateHintFromState(s *GameState) string {
 		return ""
 	}
 	return strings.Join(parts, "；")
+}
+
+// HiddenPayload AI 隐藏部分（& 之后）解析结果
+type HiddenPayload struct {
+	Summary string
+	Delta   map[string]int
+	Options []string
+}
+
+type rawHiddenPayload struct {
+	Summary    string         `json:"summary"`
+	StateDelta map[string]int `json:"state_delta"`
+	Options    []string       `json:"options"`
+}
+
+// parseHiddenPayload 解析 & 之后的 JSON，分层降级，永不返回 error
+func parseHiddenPayload(raw string) HiddenPayload {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return HiddenPayload{Options: []string{"继续"}}
+	}
+	var r rawHiddenPayload
+	if err := json.Unmarshal([]byte(raw), &r); err != nil {
+		logrus.WithError(err).Warn("parseHiddenPayload: unmarshal failed, fallback")
+		return HiddenPayload{Options: []string{"继续"}}
+	}
+
+	delta := make(map[string]int, len(validDims))
+	for _, dim := range validDims {
+		d, ok := r.StateDelta[dim]
+		if !ok {
+			delta[dim] = 0
+			continue
+		}
+		if d < -2 || d > 2 {
+			d = 0
+		}
+		delta[dim] = d
+	}
+
+	options := normalizeOptions(r.Options)
+	return HiddenPayload{Summary: r.Summary, Delta: delta, Options: options}
+}
+
+// normalizeOptions 补足/截断为 3 个，缺位补"继续"
+func normalizeOptions(opts []string) []string {
+	result := make([]string, 0, 3)
+	for i := 0; i < 3; i++ {
+		if i < len(opts) && strings.TrimSpace(opts[i]) != "" {
+			result = append(result, opts[i])
+		} else {
+			result = append(result, "继续")
+		}
+	}
+	return result
 }

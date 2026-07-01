@@ -146,3 +146,58 @@ func TestStateHintWhenHigh(t *testing.T) {
 		t.Fatalf("hint missing dims: %q", h)
 	}
 }
+
+func TestParseHiddenPayloadNormal(t *testing.T) {
+	raw := `{"summary":"你救了百姓","state_delta":{"名望":1,"人心":0,"实力":-1,"机缘":0},"options":["出城迎敌","固守待援","遣使求和"]}`
+	p := parseHiddenPayload(raw)
+	if p.Summary != "你救了百姓" {
+		t.Fatalf("summary: got %q", p.Summary)
+	}
+	if p.Delta["名望"] != 1 || p.Delta["实力"] != -1 {
+		t.Fatalf("delta: got %+v", p.Delta)
+	}
+	if len(p.Options) != 3 || p.Options[0] != "出城迎敌" {
+		t.Fatalf("options: got %+v", p.Options)
+	}
+}
+
+func TestParseHiddenPayloadBadJSON(t *testing.T) {
+	p := parseHiddenPayload("not json")
+	if p.Summary != "" {
+		t.Fatalf("bad json summary should be empty, got %q", p.Summary)
+	}
+	if len(p.Delta) != 0 {
+		t.Fatalf("bad json delta should be empty")
+	}
+	if len(p.Options) != 1 || p.Options[0] != "继续" {
+		t.Fatalf("bad json options should fallback to 继续, got %+v", p.Options)
+	}
+}
+
+func TestParseHiddenPayloadOptionsPadAndTruncate(t *testing.T) {
+	p := parseHiddenPayload(`{"options":["only one"]}`)
+	if len(p.Options) != 3 || p.Options[0] != "only one" || p.Options[1] != "继续" || p.Options[2] != "继续" {
+		t.Fatalf("pad: got %+v", p.Options)
+	}
+	p2 := parseHiddenPayload(`{"options":["a","b","c","d","e"]}`)
+	if len(p2.Options) != 3 || p2.Options[2] != "c" {
+		t.Fatalf("truncate: got %+v", p2.Options)
+	}
+}
+
+func TestParseHiddenPayloadDeltaOutOfRangeIgnored(t *testing.T) {
+	p := parseHiddenPayload(`{"state_delta":{"名望":9,"实力":-5,"人心":1}}`)
+	if p.Delta["名望"] != 0 || p.Delta["实力"] != 0 || p.Delta["人心"] != 1 {
+		t.Fatalf("out-of-range should be 0: got %+v", p.Delta)
+	}
+}
+
+func TestParseHiddenPayloadDeltaOnlyKnownDims(t *testing.T) {
+	p := parseHiddenPayload(`{"state_delta":{"名望":1,"财富":2}}`)
+	if _, exists := p.Delta["财富"]; exists {
+		t.Fatalf("财富 should be dropped")
+	}
+	if p.Delta["名望"] != 1 {
+		t.Fatalf("名望 should be 1, got %d", p.Delta["名望"])
+	}
+}
