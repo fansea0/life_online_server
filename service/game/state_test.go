@@ -44,3 +44,54 @@ func TestCreateNewGame_Default(t *testing.T) {
 		t.Errorf("实力 = %d, want 1", state.Attributes["实力"])
 	}
 }
+
+func newTestState() *GameState {
+	return &GameState{
+		Attributes: map[string]int{"名望": 5, "人心": 5, "实力": 5, "机缘": 5},
+	}
+}
+
+func TestApplyDeltaNormal(t *testing.T) {
+	s := newTestState()
+	applyDelta(s, map[string]int{"名望": 1, "人心": 0, "实力": -1, "机缘": 2})
+	if s.Attributes["名望"] != 6 || s.Attributes["人心"] != 5 || s.Attributes["实力"] != 4 || s.Attributes["机缘"] != 7 {
+		t.Fatalf("applyDelta normal: got %+v", s.Attributes)
+	}
+}
+
+func TestApplyDeltaClampHigh(t *testing.T) {
+	s := newTestState()
+	s.Attributes["名望"] = 9
+	applyDelta(s, map[string]int{"名望": 2})
+	if s.Attributes["名望"] != 10 {
+		t.Fatalf("clamp high: got %d, want 10", s.Attributes["名望"])
+	}
+}
+
+func TestApplyDeltaClampLow(t *testing.T) {
+	s := newTestState()
+	s.Attributes["实力"] = 1
+	applyDelta(s, map[string]int{"实力": -2})
+	if s.Attributes["实力"] != 0 {
+		t.Fatalf("clamp low: got %d, want 0", s.Attributes["实力"])
+	}
+}
+
+func TestApplyDeltaIgnoresOutOfRange(t *testing.T) {
+	s := newTestState()
+	applyDelta(s, map[string]int{"名望": 5, "实力": -3})
+	if s.Attributes["名望"] != 5 || s.Attributes["实力"] != 5 {
+		t.Fatalf("out-of-range delta should be ignored: got %+v", s.Attributes)
+	}
+}
+
+func TestApplyDeltaIgnoresUnknownKey(t *testing.T) {
+	s := newTestState()
+	applyDelta(s, map[string]int{"名望": 1, "财富": 9})
+	if _, exists := s.Attributes["财富"]; exists {
+		t.Fatalf("unknown key 财富 should not be added")
+	}
+	if s.Attributes["名望"] != 6 {
+		t.Fatalf("名望 should be 6, got %d", s.Attributes["名望"])
+	}
+}

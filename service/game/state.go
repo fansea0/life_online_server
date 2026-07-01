@@ -95,3 +95,34 @@ func LookupIdentity(identity string) IdentityInit {
 	}
 	return defaultIdentityInit
 }
+
+var validDims = []string{"名望", "人心", "实力", "机缘"}
+
+// clampState 将 4 维硬性限制在 0-10
+func clampState(s *GameState) {
+	for _, dim := range validDims {
+		v := s.Attributes[dim]
+		if v < 0 {
+			v = 0
+		}
+		if v > 10 {
+			v = 10
+		}
+		s.Attributes[dim] = v
+	}
+}
+
+// applyDelta 叠加本轮增量，越界值与未知键忽略，最后 clamp
+func applyDelta(s *GameState, delta map[string]int) {
+	for _, dim := range validDims {
+		d, ok := delta[dim]
+		if !ok {
+			continue
+		}
+		if d < -2 || d > 2 {
+			continue // 越界忽略
+		}
+		s.Attributes[dim] += d
+	}
+	clampState(s)
+}
