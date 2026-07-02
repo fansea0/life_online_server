@@ -241,3 +241,29 @@ func TestFinalizeTurnNoSession(t *testing.T) {
 		t.Fatalf("expected ok=false for nonexistent session")
 	}
 }
+
+func TestNormalizeKind(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"normal", "normal"},
+		{"crisis", "crisis"},
+		{"boon", "boon"},
+		{"timeskip", "timeskip"},
+		{"", "normal"},
+		{"boss", "normal"},
+		{"NORMAL", "normal"},
+	}
+	for _, c := range cases {
+		if got := normalizeKind(c.in); got != c.want {
+			t.Fatalf("normalizeKind(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestThresholdConstants(t *testing.T) {
+	if crisisLow != 1 || crisisHigh != 6 || boonThreshold != 6 {
+		t.Fatalf("thresholds: crisisLow=%d crisisHigh=%d boonThreshold=%d", crisisLow, crisisHigh, boonThreshold)
+	}
+	if timeskipGap != 3 || crisisGap != 2 || boonGap != 2 {
+		t.Fatalf("gaps: timeskipGap=%d crisisGap=%d boonGap=%d", timeskipGap, crisisGap, boonGap)
+	}
+}

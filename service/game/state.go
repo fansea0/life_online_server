@@ -103,6 +103,38 @@ func LookupIdentity(identity string) IdentityInit {
 	return defaultIdentityInit
 }
 
+// 回合类型阈值常量（便于调参与测试）
+const (
+	crisisLow     = 1 // 维度 <=此值视为濒危，触发 crisis
+	crisisHigh    = 6 // 维度 >=此值视为高维"树大招风"
+	boonThreshold = 6 // 维度跨到此值视为刚跨阈值，触发 boon
+	timeskipGap   = 3 // 连续此轮数无 timeskip 则候选 timeskip
+	crisisGap     = 2 // 连续此轮数无 crisis 则可触发 crisis（需高维）
+	boonGap       = 2 // 连续此轮数无 boon 则可触发 boon（需无 crisis 候选）
+)
+
+// validKinds 4 种合法回合类型
+var validKinds = []string{"normal", "crisis", "boon", "timeskip"}
+
+// isValidKind 判断 kind 是否合法
+func isValidKind(kind string) bool {
+	for _, k := range validKinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// normalizeKind 非法/空降级为 normal
+func normalizeKind(kind string) string {
+	kind = strings.TrimSpace(kind)
+	if isValidKind(kind) {
+		return kind
+	}
+	return "normal"
+}
+
 var validDims = []string{"名望", "人心", "实力", "机缘"}
 
 // clampState 将 4 维硬性限制在 0-10
