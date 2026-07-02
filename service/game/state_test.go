@@ -267,3 +267,62 @@ func TestThresholdConstants(t *testing.T) {
 		t.Fatalf("gaps: timeskipGap=%d crisisGap=%d boonGap=%d", timeskipGap, crisisGap, boonGap)
 	}
 }
+
+func TestDecideKindTimeskipAfterGap(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 3, "人心": 3, "实力": 3, "机缘": 3}}
+	recent := []string{"normal", "normal", "normal"}
+	if got := decideKindCandidate(s, recent); got != "timeskip" {
+		t.Fatalf("timeskip gap: got %q, want timeskip", got)
+	}
+}
+
+func TestDecideKindTimeskipBlockedByCrisis(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 3, "人心": 3, "实力": 3, "机缘": 3}}
+	recent := []string{"normal", "normal", "crisis"}
+	if got := decideKindCandidate(s, recent); got == "timeskip" {
+		t.Fatalf("should not timeskip after crisis, got timeskip")
+	}
+}
+
+func TestDecideKindCrisisLowDim(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 1, "人心": 5, "实力": 5, "机缘": 5}}
+	if got := decideKindCandidate(s, []string{"normal"}); got != "crisis" {
+		t.Fatalf("crisis low: got %q, want crisis", got)
+	}
+}
+
+func TestDecideKindCrisisHighDimAfterGap(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 6, "人心": 3, "实力": 3, "机缘": 3}}
+	if got := decideKindCandidate(s, []string{"normal", "normal"}); got != "crisis" {
+		t.Fatalf("crisis high: got %q, want crisis", got)
+	}
+}
+
+func TestDecideKindPriorityCrisisOverTimeskip(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 1, "人心": 5, "实力": 5, "机缘": 5}}
+	recent := []string{"normal", "normal", "normal"}
+	if got := decideKindCandidate(s, recent); got != "crisis" {
+		t.Fatalf("priority: got %q, want crisis", got)
+	}
+}
+
+func TestDecideKindBoonAfterGapNoCrisis(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 3, "人心": 3, "实力": 3, "机缘": 3}}
+	if got := decideKindCandidate(s, []string{"normal", "normal"}); got != "boon" {
+		t.Fatalf("boon: got %q, want boon", got)
+	}
+}
+
+func TestDecideKindNormalEmptyRecent(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 3, "人心": 3, "实力": 3, "机缘": 3}}
+	if got := decideKindCandidate(s, []string{}); got != "normal" {
+		t.Fatalf("empty recent: got %q, want normal", got)
+	}
+}
+
+func TestDecideKindNormalSingleRecent(t *testing.T) {
+	s := &GameState{Attributes: map[string]int{"名望": 4, "人心": 4, "实力": 4, "机缘": 4}}
+	if got := decideKindCandidate(s, []string{"normal"}); got != "normal" {
+		t.Fatalf("single recent: got %q, want normal", got)
+	}
+}

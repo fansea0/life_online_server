@@ -135,6 +135,63 @@ func normalizeKind(kind string) string {
 	return "normal"
 }
 
+// lastKindGapSatisfied 判断 recentKinds 末尾 gap 轮内是否出现过 kind。
+// 未出现（即连续 gap 轮无该类型）返回 true。
+func lastKindGapSatisfied(recentKinds []string, gap int, kind string) bool {
+	n := len(recentKinds)
+	if n == 0 {
+		return true // 空历史视为满足
+	}
+	start := n - gap
+	if start < 0 {
+		start = 0
+	}
+	for _, k := range recentKinds[start:] {
+		if k == kind {
+			return false
+		}
+	}
+	return true
+}
+
+// decideKindCandidate 按状态+历史算候选回合类型。优先级：crisis > timeskip > boon > normal。
+func decideKindCandidate(s *GameState, recentKinds []string) string {
+	// 规则2前置检查：是否构成 crisis 候选（低维 或 高维+gap）
+	crisisCandidate := false
+	for _, dim := range validDims {
+		if s.Attributes[dim] <= crisisLow {
+			crisisCandidate = true
+			break
+		}
+	}
+	if !crisisCandidate {
+		hasHigh := false
+		for _, dim := range validDims {
+			if s.Attributes[dim] >= crisisHigh {
+				hasHigh = true
+				break
+			}
+		}
+		if hasHigh && lastKindGapSatisfied(recentKinds, crisisGap, "crisis") {
+			crisisCandidate = true
+		}
+	}
+	// crisis 优先于 timeskip
+	if crisisCandidate {
+		return "crisis"
+	}
+	// 规则1：timeskip
+	lastIsCrisis := len(recentKinds) > 0 && recentKinds[len(recentKinds)-1] == "crisis"
+	if !lastIsCrisis && len(recentKinds) >= timeskipGap && lastKindGapSatisfied(recentKinds, timeskipGap, "timeskip") {
+		return "timeskip"
+	}
+	// 规则3：boon（需历史足够，避免开局即 boon）
+	if len(recentKinds) >= boonGap && lastKindGapSatisfied(recentKinds, boonGap, "boon") {
+		return "boon"
+	}
+	return "normal"
+}
+
 var validDims = []string{"名望", "人心", "实力", "机缘"}
 
 // clampState 将 4 维硬性限制在 0-10
