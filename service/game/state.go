@@ -284,12 +284,14 @@ func stateHintFromState(s *GameState) string {
 
 // HiddenPayload AI 隐藏部分（& 之后）解析结果
 type HiddenPayload struct {
+	Kind    string
 	Summary string
 	Delta   map[string]int
 	Options []string
 }
 
 type rawHiddenPayload struct {
+	Kind       string         `json:"kind"`
 	Summary    string         `json:"summary"`
 	StateDelta map[string]int `json:"state_delta"`
 	Options    []string       `json:"options"`
@@ -323,7 +325,7 @@ func parseHiddenPayload(raw string) HiddenPayload {
 	}
 
 	options := normalizeOptions(r.Options)
-	return HiddenPayload{Summary: r.Summary, Delta: delta, Options: options}
+	return HiddenPayload{Kind: normalizeKind(r.Kind), Summary: r.Summary, Delta: delta, Options: options}
 }
 
 // normalizeOptions 保留 AI 实际给出的选项，截断到 3 个，过滤空串。
@@ -343,6 +345,7 @@ func normalizeOptions(opts []string) []string {
 
 // TurnResult 一轮收尾后推给前端的结果
 type TurnResult struct {
+	Kind    string            // 本轮回合类型
 	Panel   map[string]string // 定性档位名
 	Delta   map[string]string // 方向 "+"/"-"/"0"
 	Options []string          // 下一轮 3 选项
@@ -375,9 +378,15 @@ func FinalizeTurn(sessionID, hiddenRaw string) (TurnResult, bool) {
 	if payload.Summary != "" {
 		state.Summary = payload.Summary
 	}
+	// 维护 RecentKinds，保留最近 5 个
+	state.RecentKinds = append(state.RecentKinds, payload.Kind)
+	if len(state.RecentKinds) > 5 {
+		state.RecentKinds = state.RecentKinds[len(state.RecentKinds)-5:]
+	}
 	SaveState(state)
 
 	return TurnResult{
+		Kind:    payload.Kind,
 		Panel:   panelFromState(state),
 		Delta:   deltaDir,
 		Options: payload.Options,

@@ -341,3 +341,61 @@ func TestKindPromptRule(t *testing.T) {
 		t.Fatalf("kindPromptRule(boss) should equal normal rule")
 	}
 }
+
+func TestParseHiddenPayloadKind(t *testing.T) {
+	p := parseHiddenPayload(`{"kind":"crisis","options":["a","b"]}`)
+	if p.Kind != "crisis" {
+		t.Fatalf("kind: got %q, want crisis", p.Kind)
+	}
+}
+
+func TestParseHiddenPayloadKindIllegalFallback(t *testing.T) {
+	p := parseHiddenPayload(`{"kind":"boss","options":["a"]}`)
+	if p.Kind != "normal" {
+		t.Fatalf("illegal kind should fallback normal: got %q", p.Kind)
+	}
+}
+
+func TestParseHiddenPayloadKindMissingFallback(t *testing.T) {
+	p := parseHiddenPayload(`{"options":["a"]}`)
+	if p.Kind != "normal" {
+		t.Fatalf("missing kind should fallback normal: got %q", p.Kind)
+	}
+}
+
+func TestFinalizeTurnAppendsKindToRecent(t *testing.T) {
+	s := CreateNewGame("陈凡", "魏国的一名谋士")
+	raw := `{"kind":"crisis","summary":"敌袭","state_delta":{"名望":0},"options":["迎战","撤退"]}`
+	res, ok := FinalizeTurn(s.SessionID, raw)
+	if !ok {
+		t.Fatalf("expected ok=true")
+	}
+	if res.Kind != "crisis" {
+		t.Fatalf("TurnResult.Kind: got %q, want crisis", res.Kind)
+	}
+	st := GetState(s.SessionID)
+	if len(st.RecentKinds) != 1 || st.RecentKinds[0] != "crisis" {
+		t.Fatalf("RecentKinds should be [crisis], got %+v", st.RecentKinds)
+	}
+}
+
+func TestFinalizeTurnRecentKindsTruncatesAtFive(t *testing.T) {
+	s := CreateNewGame("陈凡", "魏国的一名谋士")
+	s.RecentKinds = []string{"normal", "normal", "normal", "normal", "normal"}
+	SaveState(s)
+	raw := `{"kind":"boon","options":["a","b","c"]}`
+	_, ok := FinalizeTurn(s.SessionID, raw)
+	if !ok {
+		t.Fatalf("expected ok=true")
+	}
+	st := GetState(s.SessionID)
+	if len(st.RecentKinds) != 5 {
+		t.Fatalf("RecentKinds should truncate to 5, got %d", len(st.RecentKinds))
+	}
+	if st.RecentKinds[4] != "boon" {
+		t.Fatalf("last should be boon, got %+v", st.RecentKinds)
+	}
+	if st.RecentKinds[0] != "normal" {
+		t.Fatalf("first should be normal after shift, got %+v", st.RecentKinds)
+	}
+}
