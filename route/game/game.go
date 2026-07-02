@@ -146,12 +146,12 @@ func GameWS(c *gin.Context) {
 
 				// 检查是否开始总结内容（以&开头）
 				if strings.Contains(content, "&") && !summaryStarted {
-					// 找到@的位置
+					// 找到&的位置
 					atIndex := strings.Index(content, "&")
 					summary = content[atIndex+1:] // 不包含&
 					if atIndex >= 0 {
-						// 发送@之前的部分给前端
-						contentToSend := content[:atIndex] // 不包含@
+						// 发送&之前的部分给前端
+						contentToSend := content[:atIndex] // 不包含&
 						if contentToSend != "" {
 							ws.WriteJSON(gin.H{
 								"type":    "content",
@@ -159,20 +159,22 @@ func GameWS(c *gin.Context) {
 							})
 						}
 						summaryStarted = true
-						// @之后的内容不发送给前端
+						// &之后的内容不发送给前端
 						continue
 					}
 				}
 
-				// 如果还没有开始总结，正常发送内容
+				// 进入隐藏尾后，只累积到 summary，不再推给前端
+				if summaryStarted {
+					summary += content
+					continue
+				}
+
+				// 还没进入隐藏尾，正常发送内容
 				ws.WriteJSON(gin.H{
 					"type":    "content",
 					"content": content,
 				})
-
-				if summaryStarted {
-					summary += content
-				}
 			}
 			streamReader.Close()
 		}
