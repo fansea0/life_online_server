@@ -18,7 +18,7 @@ var (
 
 const initialGamePrompt = "开始游戏，请根据我的姓名和初始身份生成开局剧情，并在结尾提供三个可选行动。"
 
-func initSystemPrompt(name, identify, affinity, stateHint string) ([]*schema.Message, error) {
+func initSystemPrompt(name, identify, affinity, stateHint, turnKindRule string) ([]*schema.Message, error) {
 	msg, err := eino.CreateMessagesCommon(
 		config.GetSystemMsg(),
 		map[string]any{
@@ -26,6 +26,7 @@ func initSystemPrompt(name, identify, affinity, stateHint string) ([]*schema.Mes
 			"identify":         identify,
 			"identityAffinity": affinity,
 			"stateHint":        stateHint,
+			"turnKindRule":     turnKindRule,
 			"respFormat":       config.GetRespFormat(),
 			"otherReqs":        config.GetOtherReqs(),
 		},
@@ -37,6 +38,15 @@ func initSystemPrompt(name, identify, affinity, stateHint string) ([]*schema.Mes
 	return msg, nil
 }
 
+// buildTurnKindRule 根据 state + RecentKinds 算出候选回合类型并拼接规则段
+func buildTurnKindRule(state *GameState) string {
+	if state == nil {
+		return kindPromptRule("normal")
+	}
+	candidate := decideKindCandidate(state, state.RecentKinds)
+	return "本轮建议回合类型：" + candidate + "。" + kindPromptRule(candidate) + "你必须按此类型生成剧情与选项，并在 kind 字段回填实际类型。"
+}
+
 func appendInitialGamePrompt(msgContext []*schema.Message) []*schema.Message {
 	return append(msgContext, schema.UserMessage(initialGamePrompt))
 }
@@ -44,7 +54,7 @@ func appendInitialGamePrompt(msgContext []*schema.Message) []*schema.Message {
 func StartGame(name, identify string) (string, string, error) {
 	state := CreateNewGame(name, identify)
 	affinity := state.IdentityAffinity
-	msgContext, err := initSystemPrompt(name, identify, affinity, "")
+	msgContext, err := initSystemPrompt(name, identify, affinity, "", kindPromptRule("normal"))
 	if err != nil {
 		return "", "", err
 	}
@@ -66,8 +76,8 @@ func StartGame(name, identify string) (string, string, error) {
 func StartGameStream(name, identify string) (string, *schema.StreamReader[*schema.Message], error) {
 	state := CreateNewGame(name, identify)
 	affinity := state.IdentityAffinity
-	// 开局尚无态势，stateHint 为空
-	msgContext, err := initSystemPrompt(name, identify, affinity, "")
+	// 开局首轮 RecentKinds 为空，候选强制 normal
+	msgContext, err := initSystemPrompt(name, identify, affinity, "", kindPromptRule("normal"))
 	if err != nil {
 		return "", nil, err
 	}
@@ -89,12 +99,14 @@ func HandleChoice(sessionID, choice string) (string, error) {
 	state := GetState(sessionID)
 	stateHint := ""
 	affinity := ""
+	turnKindRule := kindPromptRule("normal")
 	if state != nil {
 		stateHint = stateHintFromState(state)
 		affinity = state.IdentityAffinity
+		turnKindRule = buildTurnKindRule(state)
 	}
 	// 重新生成带最新状态提示的 system，替换上下文首条 system 消息
-	sysMsg, err := initSystemPrompt(stateIdentityName(state), stateIdentityDesc(state), affinity, stateHint)
+	sysMsg, err := initSystemPrompt(stateIdentityName(state), stateIdentityDesc(state), affinity, stateHint, turnKindRule)
 	if err == nil && len(sysMsg) > 0 && len(context) > 0 {
 		// 替换首条 system，保留后续历史
 		context = append([]*schema.Message{sysMsg[0]}, context[1:]...)
@@ -119,12 +131,14 @@ func HandleChoiceStream(sessionID, choice string) (*schema.StreamReader[*schema.
 	state := GetState(sessionID)
 	stateHint := ""
 	affinity := ""
+	turnKindRule := kindPromptRule("normal")
 	if state != nil {
 		stateHint = stateHintFromState(state)
 		affinity = state.IdentityAffinity
+		turnKindRule = buildTurnKindRule(state)
 	}
 	// 重新生成带最新状态提示的 system，替换上下文首条 system 消息
-	sysMsg, err := initSystemPrompt(stateIdentityName(state), stateIdentityDesc(state), affinity, stateHint)
+	sysMsg, err := initSystemPrompt(stateIdentityName(state), stateIdentityDesc(state), affinity, stateHint, turnKindRule)
 	if err == nil && len(sysMsg) > 0 && len(context) > 0 {
 		// 替换首条 system，保留后续历史
 		context = append([]*schema.Message{sysMsg[0]}, context[1:]...)
