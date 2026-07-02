@@ -165,7 +165,7 @@ var stateHints = map[string]string{
 	"机缘": "你近来机缘不断，似有天意相助",
 }
 
-// stateHintFromState 高维度（>=5）态势提示，多维逗号连接，全低返回空串
+// stateHintFromState 高维度（>=5）态势提示，多维以；连接，全低返回空串
 func stateHintFromState(s *GameState) string {
 	parts := make([]string, 0, len(validDims))
 	for _, dim := range validDims {
