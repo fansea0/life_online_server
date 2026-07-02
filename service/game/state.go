@@ -154,6 +154,20 @@ func lastKindGapSatisfied(recentKinds []string, gap int, kind string) bool {
 	return true
 }
 
+// kindPromptRule 返回该回合类型的 system 规则段文本
+func kindPromptRule(kind string) string {
+	switch normalizeKind(kind) {
+	case "crisis":
+		return "[crisis] 叙事≤60字，急促；只给2个选项，两者都有代价（必有负面delta）；无第三选项。"
+	case "boon":
+		return "[boon] 叙事≤80字，喜悦基调；3个选项均无负面delta，让玩家选偏向哪个维度的收益。"
+	case "timeskip":
+		return "[timeskip] 叙事≤40字概括数月/数年经过 + 一句\"时过境迁\"；2个选项（\"就此翻过\"/\"期间有所动作\"）；本类型state_delta可更大（±2常态）。"
+	default:
+		return "[normal] 叙事100-150字，给出3个风格分化的选项，可含正负后果。"
+	}
+}
+
 // decideKindCandidate 按状态+历史算候选回合类型。优先级：crisis > timeskip > boon > normal。
 func decideKindCandidate(s *GameState, recentKinds []string) string {
 	// 规则2前置检查：是否构成 crisis 候选（低维 或 高维+gap）

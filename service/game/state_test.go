@@ -326,3 +326,18 @@ func TestDecideKindNormalSingleRecent(t *testing.T) {
 		t.Fatalf("single recent: got %q, want normal", got)
 	}
 }
+
+func TestKindPromptRule(t *testing.T) {
+	for _, kind := range validKinds {
+		rule := kindPromptRule(kind)
+		if rule == "" {
+			t.Fatalf("kindPromptRule(%q) returned empty", kind)
+		}
+		if !strings.Contains(rule, kind) {
+			t.Fatalf("kindPromptRule(%q) should contain kind name: %q", kind, rule)
+		}
+	}
+	if kindPromptRule("boss") != kindPromptRule("normal") {
+		t.Fatalf("kindPromptRule(boss) should equal normal rule")
+	}
+}
