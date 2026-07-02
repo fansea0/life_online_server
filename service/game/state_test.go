@@ -174,14 +174,21 @@ func TestParseHiddenPayloadBadJSON(t *testing.T) {
 	}
 }
 
-func TestParseHiddenPayloadOptionsPadAndTruncate(t *testing.T) {
+func TestParseHiddenPayloadOptionsPartialAndTruncate(t *testing.T) {
+	// 不足 3 个时按实际数量返回，不再补"继续"
 	p := parseHiddenPayload(`{"options":["only one"]}`)
-	if len(p.Options) != 3 || p.Options[0] != "only one" || p.Options[1] != "继续" || p.Options[2] != "继续" {
-		t.Fatalf("pad: got %+v", p.Options)
+	if len(p.Options) != 1 || p.Options[0] != "only one" {
+		t.Fatalf("partial: got %+v", p.Options)
 	}
+	// 超过 3 个截断到 3
 	p2 := parseHiddenPayload(`{"options":["a","b","c","d","e"]}`)
 	if len(p2.Options) != 3 || p2.Options[2] != "c" {
 		t.Fatalf("truncate: got %+v", p2.Options)
+	}
+	// 空串被过滤
+	p3 := parseHiddenPayload(`{"options":["a","","c"]}`)
+	if len(p3.Options) != 2 || p3.Options[0] != "a" || p3.Options[1] != "c" {
+		t.Fatalf("filter blank: got %+v", p3.Options)
 	}
 }
 

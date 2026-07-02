@@ -196,11 +196,13 @@ type rawHiddenPayload struct {
 func parseHiddenPayload(raw string) HiddenPayload {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
+		// 完全无隐藏尾，兜底"继续"避免玩家卡住
 		return HiddenPayload{Options: []string{"继续"}}
 	}
 	var r rawHiddenPayload
 	if err := json.Unmarshal([]byte(raw), &r); err != nil {
 		logrus.WithError(err).Warn("parseHiddenPayload: unmarshal failed, fallback")
+		// JSON 整体解析失败，兜底"继续"
 		return HiddenPayload{Options: []string{"继续"}}
 	}
 
@@ -221,14 +223,16 @@ func parseHiddenPayload(raw string) HiddenPayload {
 	return HiddenPayload{Summary: r.Summary, Delta: delta, Options: options}
 }
 
-// normalizeOptions 补足/截断为 3 个，缺位补"继续"
+// normalizeOptions 保留 AI 实际给出的选项，截断到 3 个，过滤空串。
+// 不再用"继续"补足——部分成功就按实际数量返回，避免无故冒出"继续"。
 func normalizeOptions(opts []string) []string {
 	result := make([]string, 0, 3)
-	for i := 0; i < 3; i++ {
-		if i < len(opts) && strings.TrimSpace(opts[i]) != "" {
-			result = append(result, opts[i])
-		} else {
-			result = append(result, "继续")
+	for _, o := range opts {
+		if len(result) >= 3 {
+			break
+		}
+		if s := strings.TrimSpace(o); s != "" {
+			result = append(result, s)
 		}
 	}
 	return result
