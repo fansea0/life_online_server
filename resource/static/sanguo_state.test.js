@@ -28,3 +28,22 @@ try {
     console.error("sanguo_state tests FAIL:", e.message);
     process.exit(1);
 }
+
+// kind -> 容器 class 映射
+function kindToClass(kind) {
+    const map = {"normal":"turn-normal","crisis":"turn-crisis","boon":"turn-boon","timeskip":"turn-timeskip"};
+    return map[kind] || "turn-normal";
+}
+
+try {
+    assert.strictEqual(kindToClass("crisis"), "turn-crisis");
+    assert.strictEqual(kindToClass("boon"), "turn-boon");
+    assert.strictEqual(kindToClass("timeskip"), "turn-timeskip");
+    assert.strictEqual(kindToClass("normal"), "turn-normal");
+    assert.strictEqual(kindToClass("boss"), "turn-normal");
+    assert.strictEqual(kindToClass(undefined), "turn-normal");
+    console.log("kindToClass tests PASS");
+} catch (e) {
+    console.error("kindToClass tests FAIL:", e.message);
+    process.exit(1);
+}
