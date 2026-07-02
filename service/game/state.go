@@ -276,3 +276,17 @@ func FinalizeTurn(sessionID, hiddenRaw string) (TurnResult, bool) {
 		Options: payload.Options,
 	}, true
 }
+
+// ParseSummaryForContext 从隐藏尾解析 summary 文本，供上下文回灌；解析失败返回空串
+func ParseSummaryForContext(hiddenRaw string) string {
+	return parseHiddenPayload(hiddenRaw).Summary
+}
+
+// PanelOf 取会话当前面板，无状态返回 nil
+func PanelOf(sessionID string) map[string]string {
+	state := GetState(sessionID)
+	if state == nil {
+		return nil
+	}
+	return panelFromState(state)
+}

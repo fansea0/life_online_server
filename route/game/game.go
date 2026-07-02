@@ -110,6 +110,14 @@ func GameWS(c *gin.Context) {
 			sessionID, streamReader, err = game.StartGameStream(req.Name, req.Identify)
 			if err == nil {
 				ws.WriteJSON(gin.H{"type": "session", "session_id": sessionID})
+				// 发送初始状态面板（delta 全 0，options 留空，由后续 end 帧不渲染）
+				if panel := game.PanelOf(sessionID); panel != nil {
+					ws.WriteJSON(gin.H{
+						"type":  "state",
+						"panel": panel,
+						"delta": map[string]string{"名望": "0", "人心": "0", "实力": "0", "机缘": "0"},
+					})
+				}
 			}
 		} else if req.Type == "choice" {
 			sessionID = req.SessionID
@@ -169,14 +177,30 @@ func GameWS(c *gin.Context) {
 			streamReader.Close()
 		}
 
+		// 解析隐藏尾、叠加状态、派生面板
+		turn, ok := game.FinalizeTurn(sessionID, summary)
+		summaryToCtx := summary
+		if ok {
+			// 回灌解析出的 summary 文本（而非原始 JSON）
+			if parsed := game.ParseSummaryForContext(summary); parsed != "" {
+				summaryToCtx = parsed
+			}
+			ws.WriteJSON(gin.H{
+				"type":    "state",
+				"panel":   turn.Panel,
+				"delta":   turn.Delta,
+				"options": turn.Options,
+			})
+		}
+
 		// 发送结束标记，告知前端本轮输出完毕
 		ws.WriteJSON(gin.H{"type": "end"})
 		logrus.WithFields(logrus.Fields{
-			"summary": summary,
+			"summary": summaryToCtx,
 		}).Infoln("game summary")
 
 		// 更新完整上下文到内存
-		game.UpdateContextWithResponse(sessionID, summary)
+		game.UpdateContextWithResponse(sessionID, summaryToCtx)
 	}
 }
 
