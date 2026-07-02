@@ -10,6 +10,7 @@ type GameState struct {
 	Attributes       map[string]int `json:"attributes"`        // 名望/人心/实力/机缘
 	Summary          string         `json:"summary"`           // 前情摘要，回灌 AI 上下文
 	IsGameOver       bool           `json:"is_game_over"`
+	RecentKinds      []string       `json:"recent_kinds"` // 最近 5 轮回合类型
 }
 
 // UserAction 用户发送的请求
