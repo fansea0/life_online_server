@@ -114,6 +114,7 @@ func GameWS(c *gin.Context) {
 				if panel := game.PanelOf(sessionID); panel != nil {
 					ws.WriteJSON(gin.H{
 						"type":  "state",
+						"kind":  "normal",
 						"panel": panel,
 						"delta": map[string]string{"名望": "0", "人心": "0", "实力": "0", "机缘": "0"},
 					})
@@ -189,6 +190,7 @@ func GameWS(c *gin.Context) {
 			}
 			ws.WriteJSON(gin.H{
 				"type":    "state",
+				"kind":    turn.Kind,
 				"panel":   turn.Panel,
 				"delta":   turn.Delta,
 				"options": turn.Options,
